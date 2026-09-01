@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKYRATE — Real-Time Airfare Price Intelligence for CPI Augmentation</title>
+  <meta name="description"
+    content="Smart India Hackathon 2026 Interactive Prototype Demo for Real-Time Airfare Price Intelligence for CPI Augmentation.">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <div class="presentation-wrapper">
+
+    <!-- TOP HEADER -->
+    <header class="presentation-header">
+      <div class="brand">
+        <span class="logo-icon">✈</span>
+        <div class="brand-info">
+          <span class="product-name">SKYRATE</span>
+          <span class="product-subtitle">Real-Time Airfare Price Intelligence for CPI Augmentation</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="sih-badge">SIH 2026 PROTOTYPE DEMO</div>
+        <div class="step-indicator-pill" id="stepPill">Step 1 / 8</div>
+      </div>
+    </header>
+
+    <!-- MAIN VIEWPORT SLIDE STACK (No scrolling allowed) -->
+    <main class="slides-viewport">
+
+      <!-- ==================================================
+           SCREEN 1 — DATA COLLECTION
+           ================================================== -->
+      <section class="slide active" id="slide1">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 1</div>
+          <h1 class="slide-title">1. Collecting Real-Time Data</h1>
+          
+          <div class="visual-container s1-flow">
+            <div class="flow-box hero-box">
+              <span class="box-icon">✈</span>
+              <span class="box-text">SKYRATE</span>
+            </div>
+
+            <div class="down-arrow-animated">
+              <span class="arrow-line"></span>
+              <span class="arrow-head">↓</span>
+            </div>
+
+            <div class="sources-vertical-grid">
+              <div class="source-card-mini">
+                <span class="src-type">Airline / OTA Websites</span>
+                <div class="src-tags">
+                  <span class="mini-tag">IndiGo</span>
+                  <span class="mini-tag">Air India</span>
+                  <span class="mini-tag">MakeMyTrip</span>
+                  <span class="mini-tag">Cleartrip</span>
+                </div>
+              </div>
+
+              <div class="source-card-mini">
+                <span class="src-type">DGCA Reports</span>
+                <div class="src-tags"><span class="mini-tag">Aviation Stats</span></div>
+              </div>
+
+              <div class="source-card-mini">
+                <span class="src-type">Oil Prices</span>
+                <div class="src-tags"><span class="mini-tag">ATF Fuel Benchmark</span></div>
+              </div>
+
+              <div class="source-card-mini">
+                <span class="src-type">Many More Sources</span>
+                <div class="src-tags"><span class="mini-tag">Economic Indicators</span></div>
+              </div>
+            </div>
+
+            <div class="down-arrow-animated">
+              <span class="arrow-line"></span>
+              <span class="arrow-head">↓</span>
+            </div>
+
+            <div class="flow-box destination-box">
+              <span class="pulse-dot"></span>
+              <span>DATA COLLECTION</span>
+            </div>
+          </div>
+
+          <p class="slide-text">
+            Automated web scraping collects airfare and related economic data at defined intervals.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 2 — CLEANING + ISOLATION FOREST
+           ================================================== -->
+      <section class="slide" id="slide2">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 2</div>
+          <h1 class="slide-title">2. Clean & Validate Data</h1>
+
+          <div class="visual-container">
+            <!-- Pipeline Flow Pills -->
+            <div class="pipeline-row">
+              <div class="pipe-node">RAW DATA</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node">CLEANING</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node highlight">ISOLATION FOREST</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node success">VALID DATA</div>
+            </div>
+
+            <!-- Fares Demonstration Cards -->
+            <div class="fares-demo-grid">
+              <div class="fare-demo-card">
+                <span class="fare-val">₹5,420</span>
+                <span class="fare-status valid">✓ Valid</span>
+              </div>
+              <div class="fare-demo-card">
+                <span class="fare-val">₹5,650</span>
+                <span class="fare-status valid">✓ Valid</span>
+              </div>
+              <div class="fare-demo-card">
+                <span class="fare-val">₹6,120</span>
+                <span class="fare-status valid">✓ Valid</span>
+              </div>
+
+              <!-- Anomaly Card -->
+              <div class="fare-demo-card anomaly-card" id="anomalyDemoCard">
+                <span class="fare-val text-anomaly">₹18,900</span>
+                <div class="anomaly-badge-pulse" id="anomBadge">⚠ Anomaly Detected</div>
+                <span class="anomaly-sub">Isolated by algorithm</span>
+              </div>
+
+              <div class="fare-demo-card">
+                <span class="fare-val">₹4,890</span>
+                <span class="fare-status valid">✓ Valid</span>
+              </div>
+            </div>
+
+            <div class="validation-summary-pill" id="validSummaryPill">
+              <span class="check-icon">✓</span>
+              <span>Valid Data → Continue</span>
+            </div>
+          </div>
+
+          <p class="slide-text">
+            Duplicate, incomplete and unusual observations are identified before index calculation.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 3 — BUILD THE UNIFIED DATASET
+           ================================================== -->
+      <section class="slide" id="slide3">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 3</div>
+          <h1 class="slide-title">3. Build the Unified Dataset</h1>
+
+          <div class="visual-container s3-flow">
+            
+            <!-- Top Visual Flow -->
+            <div class="flow-hero-row">
+              <div class="flow-box hero-box">
+                <span class="box-icon">✓</span>
+                <span class="box-text">CLEANED DATA</span>
+              </div>
+              <div class="small-down-arrow">↓</div>
+            </div>
+
+            <!-- Unified Repository / Database Card -->
+            <div class="database-card" id="s3DbCard">
+              <div class="db-header">
+                <div class="db-icon">🗄</div>
+                <div class="db-title">SKYRATE UNIFIED DATABASE</div>
+                <div class="db-status-pill" id="s3DbStatus">Stored ✓</div>
+              </div>
+
+              <div class="db-table-unified">
+                <div class="db-u-row db-u-header">
+                  <span>DATA TYPE</span>
+                  <span>EXAMPLE</span>
+                  <span>ROLE</span>
+                </div>
+
+                <!-- Row 1: Airfare -->
+                <div class="db-u-row s3-row-item" id="s3Row1">
+                  <span class="dt-name">✈ Airfare</span>
+                  <span class="dt-example">DEL → BOM: ₹5,420</span>
+                  <span><span class="role-badge role-price">Observed Price</span></span>
+                </div>
+
+                <!-- Row 2: DGCA Data -->
+                <div class="db-u-row s3-row-item" id="s3Row2">
+                  <span class="dt-name">📊 DGCA Data</span>
+                  <span class="dt-example">Passenger Traffic / Routes</span>
+                  <span><span class="role-badge role-weight font-bold">Weight</span></span>
+                </div>
+
+                <!-- Row 3: Oil / Fuel -->
+                <div class="db-u-row s3-row-item" id="s3Row3">
+                  <span class="dt-name">⛽ Oil / Fuel</span>
+                  <span class="dt-example">ATF Fuel Benchmark</span>
+                  <span><span class="role-badge role-cost">Cost Factor</span></span>
+                </div>
+
+                <!-- Row 4: Other Sources -->
+                <div class="db-u-row s3-row-item" id="s3Row4">
+                  <span class="dt-name">🌐 Other Sources</span>
+                  <span class="dt-example">Economic / Travel Signals</span>
+                  <span><span class="role-badge role-support">Supporting Factor</span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Down Arrow to Ready for Indexing -->
+            <div class="indexing-ready-tag">
+              <span class="arrow-tiny">↓</span>
+              <span class="tag-text">READY FOR INDEXING</span>
+            </div>
+
+            <!-- Bottom Merged Visual Flow -->
+            <div class="unified-flow-pill-bar" id="s3UnifiedPillBar">
+              <div class="input-tags-group">
+                <span class="in-tag">AIRFARE</span>
+                <span class="plus-sign">+</span>
+                <span class="in-tag highlight-weight">DGCA WEIGHTS</span>
+                <span class="plus-sign">+</span>
+                <span class="in-tag">FUEL DATA</span>
+                <span class="plus-sign">+</span>
+                <span class="in-tag">OTHER INPUTS</span>
+              </div>
+              <span class="flow-arr">→</span>
+              <div class="unified-dataset-badge" id="unifiedBadge">
+                UNIFIED DATASET
+              </div>
+              <span class="flow-arr">→</span>
+              <div class="database-confirm-tag">
+                DATABASE ✓
+              </div>
+            </div>
+
+          </div>
+
+          <p class="slide-text">
+            Cleaned airfare, aviation weights and supporting economic data are stored together.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 4 — DYNAMIC DATA REFRESH
+           ================================================== -->
+      <section class="slide" id="slide4">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 4</div>
+          <h1 class="slide-title">4. Continuous Data Refresh</h1>
+
+          <div class="visual-container s4-flow">
+            <!-- Cycle diagram -->
+            <div class="cycle-row">
+              <div class="cycle-node">DATABASE</div>
+              <div class="cycle-arrow">→</div>
+              <div class="cycle-node">FETCH DATA</div>
+              <div class="cycle-arrow">→</div>
+              <div class="cycle-node">UPDATE DATA</div>
+              <div class="cycle-arrow">→</div>
+              <div class="cycle-node active-spin">SCRAPE AGAIN ↺</div>
+            </div>
+
+            <!-- Timer & Refresh Box -->
+            <div class="timer-card">
+              <div class="timer-label">AUTOMATIC INTERVAL TIMER</div>
+              <div class="timer-countdown" id="timerDisplay">Next refresh: 00:30</div>
+              <div class="refresh-badge-triggered" id="refreshTriggeredPill">Refresh Triggered ✓</div>
+            </div>
+
+            <!-- Live Updating Fares Preview -->
+            <div class="live-update-box">
+              <div class="live-update-title">REAL-TIME FARE UPDATES</div>
+              <div class="live-update-row" id="updateRow1">
+                <span class="route-code">DEL → BOM</span>
+                <div class="fare-transition">
+                  <span class="old-fare">₹5,420</span>
+                  <span class="trans-arrow">→</span>
+                  <span class="new-fare" id="newFare1">₹5,680</span>
+                </div>
+              </div>
+              <div class="live-update-row" id="updateRow2">
+                <span class="route-code">DEL → BLR</span>
+                <div class="fare-transition">
+                  <span class="old-fare">₹6,120</span>
+                  <span class="trans-arrow">→</span>
+                  <span class="new-fare" id="newFare2">₹6,450</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="key-callout-pill">
+              ⚡ DATA IS NOT STATIC. IT KEEPS UPDATING.
+            </div>
+          </div>
+
+          <p class="slide-text">
+            At predefined intervals, sources are scraped again and the database is updated.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 5 — INDEX CALCULATION
+           ================================================== -->
+      <section class="slide" id="slide5">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 5</div>
+          <h1 class="slide-title">5. Calculate Airfare Price Index</h1>
+
+          <div class="visual-container s5-flow">
+            <!-- Math flow sequence -->
+            <div class="math-pipeline-row">
+              <span class="math-pill">Clean Data</span>
+              <span class="math-arrow">→</span>
+              <span class="math-pill">Statistics</span>
+              <span class="math-arrow">→</span>
+              <span class="math-pill highlight">Fisher / Index Calculation</span>
+              <span class="math-arrow">→</span>
+              <span class="math-pill">Route-wise Indices</span>
+              <span class="math-arrow">→</span>
+              <span class="math-pill success">Combined Index</span>
+            </div>
+
+            <div class="index-calc-grid">
+              <!-- Left: Route-wise indices -->
+              <div class="routes-index-card">
+                <div class="card-subtitle-sm">ROUTE-LEVEL INDICES</div>
+                <div class="route-index-row">
+                  <span>DEL → BOM</span>
+                  <strong class="idx-val">106.2</strong>
+                </div>
+                <div class="route-index-row">
+                  <span>DEL → BLR</span>
+                  <strong class="idx-val">109.4</strong>
+                </div>
+                <div class="route-index-row">
+                  <span>BOM → BLR</span>
+                  <strong class="idx-val">107.1</strong>
+                </div>
+                <div class="route-index-row">
+                  <span>BLR → HYD</span>
+                  <strong class="idx-val">105.8</strong>
+                </div>
+              </div>
+
+              <!-- Right: Hero Combined Airfare Index -->
+              <div class="hero-index-display">
+                <div class="index-display-title">AIRFARE PRICE INDEX</div>
+                <div class="big-index-value">108.6</div>
+                <div class="base-period-tag">Base = 100</div>
+              </div>
+            </div>
+
+            <div class="math-method-note">
+              <span>Statistical Methodology: <strong>Fisher Statistics Index Formula</strong></span>
+            </div>
+          </div>
+
+          <p class="slide-text">
+            Multiple route-level indices are combined into an overall airfare price index.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 6 — TRAIN THE MODEL
+           ================================================== -->
+      <section class="slide" id="slide6">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 6</div>
+          <h1 class="slide-title">6. Train the Model</h1>
+
+          <div class="visual-container s6-flow">
+            <!-- Flow pills -->
+            <div class="pipeline-row">
+              <div class="pipe-node">Historical Data</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node">Training Dataset</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node highlight">Model Training</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node success">Trained Model</div>
+            </div>
+
+            <!-- Training Progress Box -->
+            <div class="training-box">
+              <div class="training-header">
+                <span class="training-status-text" id="trainStatusText">Training Model...</span>
+                <span class="training-percent" id="trainPercentText">85%</span>
+              </div>
+
+              <div class="progress-track">
+                <div class="progress-bar-fill" id="trainProgressBar"></div>
+              </div>
+
+              <div class="model-ready-badge" id="modelReadyBadge">
+                <span class="ready-icon">✓</span>
+                <span>Model Ready ✓</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="slide-text">
+            Historical cleaned data is used to train the model for future airfare prediction.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 7 — AIRFARE INTELLIGENCE API & DASHBOARD GATEWAY
+           ================================================== -->
+      <section class="slide" id="slide7">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 7</div>
+          <h1 class="slide-title">7. Airfare Intelligence API & Dashboard</h1>
+
+          <div class="visual-container s7-flow">
+            <!-- Flow -->
+            <div class="pipeline-row">
+              <div class="pipe-node">TRAINED MODEL</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node highlight">AIRFARE INTELLIGENCE API</div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-node success">SKYRATE DASHBOARD</div>
+            </div>
+
+            <!-- Mini Preview & Gateway Card -->
+            <div class="mini-dashboard-preview">
+              <div class="mini-dash-header">
+                <div class="mini-dash-brand">
+                  <span class="blue-dot">●</span> SKYRATE LIVE DASHBOARD PREVIEW
+                </div>
+                <div class="live-status-pill">
+                  <span class="live-dot"></span> LIVE DATA
+                </div>
+              </div>
+
+              <div class="mini-dash-grid">
+                <div class="mini-metric-tile hero-tile">
+                  <div class="mini-tile-label">AIRFARE PRICE INDEX</div>
+                  <div class="mini-tile-val">108.6</div>
+                  <div class="mini-tile-change">↑ +8.6%</div>
+                </div>
+
+                <div class="mini-metric-tile">
+                  <div class="mini-tile-label">Current Average Fare</div>
+                  <div class="mini-tile-val-sm">₹6,240</div>
+                </div>
+
+                <div class="mini-metric-tile">
+                  <div class="mini-tile-label">Routes Tracked</div>
+                  <div class="mini-tile-val-sm">24</div>
+                </div>
+              </div>
+
+              <!-- Dedicated Gateway Button -->
+              <div class="gateway-action-box">
+                <a href="dashboard.html" target="_blank" class="btn-launch-dashboard">
+                  <span class="launch-icon">🚀</span>
+                  <span>Open SKYRATE Dashboard</span>
+                  <span class="ext-icon">↗</span>
+                </a>
+                <span class="launch-hint">Opens the full scrollable analytics platform in a new tab</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="slide-text">
+            The processed index and predictions can be consumed through an API and displayed on a dedicated dashboard.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SCREEN 8 — INSIGHTS & PREDICTION
+           ================================================== -->
+      <section class="slide" id="slide8">
+        <div class="slide-content">
+          <div class="slide-badge">STAGE 8 — FINAL INSIGHTS</div>
+          <h1 class="slide-title">8. Intelligence & Future Insights</h1>
+
+          <div class="insights-three-column-grid">
+            
+            <!-- SECTION A: PRICE ALERT -->
+            <div class="insight-card alert-insight-card">
+              <div class="insight-card-header">
+                <span class="alert-icon">⚠</span>
+                <h3>PRICE ALERT</h3>
+              </div>
+              <div class="alert-box-inner">
+                <div class="alert-title-red">PRICE INCREASE DETECTED</div>
+                <div class="alert-route font-bold">DEL → BOM</div>
+                <div class="alert-fare-change">
+                  <span>₹5,420</span>
+                  <span class="arrow">↓</span>
+                  <span class="new-fare">₹6,180</span>
+                </div>
+                <div class="alert-percent-increase">Fare increased by 14%</div>
+              </div>
+              <div class="action-badge-btn">ALERT GENERATED</div>
+            </div>
+
+            <!-- SECTION B: FUTURE PREDICTION -->
+            <div class="insight-card prediction-insight-card">
+              <div class="insight-card-header">
+                <span class="icon">📈</span>
+                <h3>FUTURE PREDICTION</h3>
+              </div>
+              <div class="timeline-step-row">
+                <div class="t-node">
+                  <span class="t-label">PAST</span>
+                  <span class="t-val">100</span>
+                </div>
+                <span class="t-line">──</span>
+                <div class="t-node">
+                  <span class="t-label">CURRENT</span>
+                  <span class="t-val">108</span>
+                </div>
+                <span class="t-line">──</span>
+                <div class="t-node highlight">
+                  <span class="t-label">FUTURE</span>
+                  <span class="t-val">116</span>
+                </div>
+              </div>
+              <div class="predicted-index-box">
+                <div class="pred-label">Predicted Airfare Index</div>
+                <div class="pred-number">116</div>
+                <div class="pred-sub">Next Period</div>
+              </div>
+              <div class="illustrative-label-tag">Predicted / Illustrative</div>
+            </div>
+
+            <!-- SECTION C: CPI INSIGHT -->
+            <div class="insight-card cpi-insight-card">
+              <div class="insight-card-header">
+                <span class="icon">📊</span>
+                <h3>CPI INSIGHT</h3>
+              </div>
+              <div class="cpi-flow-mini">
+                <span>AIRFARE PRICE</span>
+                <span class="plus">+</span>
+                <span>OTHER PRICE FACTORS</span>
+                <span class="arrow">↓</span>
+                <span class="result-label">CPI IMPACT</span>
+              </div>
+              <p class="cpi-expl-text">
+                Airfare prices are one signal that can help explain movements in CPI.
+              </p>
+              <div class="cpi-stats-table">
+                <div class="cpi-stat-row">
+                  <span>Traditional CPI:</span>
+                  <strong>5.1%</strong>
+                </div>
+                <div class="cpi-stat-row text-blue">
+                  <span>Airfare Signal:</span>
+                  <strong>+0.4%</strong>
+                </div>
+                <div class="cpi-stat-row total-cpi">
+                  <span>Augmented Insight:</span>
+                  <strong>5.5%</strong>
+                </div>
+              </div>
+              <div class="illustrative-label-tag warning-tag">Illustrative Prototype Values</div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR (Fixed height, constant visibility) -->
+    <footer class="presentation-footer">
+      <div class="nav-left">
+        <button id="prevBtn" class="btn btn-secondary" onclick="prevSlide()" disabled>
+          ← BACK
+        </button>
+      </div>
+
+      <div class="nav-center">
+        <!-- 8 Progress Dots -->
+        <div class="dots-container" id="dotsContainer">
+          <span class="dot active" onclick="goToSlide(1)"></span>
+          <span class="dot" onclick="goToSlide(2)"></span>
+          <span class="dot" onclick="goToSlide(3)"></span>
+          <span class="dot" onclick="goToSlide(4)"></span>
+          <span class="dot" onclick="goToSlide(5)"></span>
+          <span class="dot" onclick="goToSlide(6)"></span>
+          <span class="dot" onclick="goToSlide(7)"></span>
+          <span class="dot" onclick="goToSlide(8)"></span>
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <button id="nextBtn" class="btn btn-primary" onclick="nextSlide()">
+          NEXT →
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
