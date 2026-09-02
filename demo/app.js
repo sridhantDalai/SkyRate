@@ -12,7 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initPresentation() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const stageParam = urlParams.get('stage');
+  if (stageParam && !isNaN(stageParam)) {
+    currentSlide = parseInt(stageParam, 10);
+  } else if (window.location.hash) {
+    const hashNum = parseInt(window.location.hash.replace('#slide', ''), 10);
+    if (!isNaN(hashNum)) currentSlide = hashNum;
+  }
+  if (currentSlide < 1 || currentSlide > totalSlides) currentSlide = 1;
+
   updateSlideView();
+  triggerSlideAnimations(currentSlide);
 
   // Keyboard navigation listener
   document.addEventListener('keydown', (e) => {
