@@ -1,0 +1,14 @@
+{
+  "schedule": {
+    "enabled": true,
+    "start_time": "02:17",
+    "timezone": "Asia/Kolkata",
+    "run_daily": true
+  },
+  "database": {
+    "show_confirmation_samples": true,
+    "sample_rows": 5,
+    "verify_after_upload": true
+  },
+  "scraper_script": "main_scraper.py"
+}
