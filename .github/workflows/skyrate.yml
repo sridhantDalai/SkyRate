@@ -4,7 +4,6 @@ name: SkyRate Daily Pipeline
 # 12:00 AM IST = 00:00 Asia/Kolkata = 18:30 UTC (previous day)
 # GitHub Actions cron uses UTC only.
 on:
-  push:
   schedule:
     - cron: "30 18 * * *"   # 18:30 UTC = 00:00 IST next day
   workflow_dispatch:          # Allow manual runs from the GitHub Actions UI
