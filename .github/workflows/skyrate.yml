@@ -5,7 +5,7 @@ name: SkyRate Daily Pipeline
 # GitHub Actions cron uses UTC only.
 on:
   schedule:
-    - cron: "30 18 * * *"   # 18:30 UTC = 00:00 IST next day
+    - cron: "46 17 * * *"   # 17:50 UTC = 23:20 IST   # 18:30 UTC = 00:00 IST next day
   workflow_dispatch:          # Allow manual runs from the GitHub Actions UI
 
 # --- Concurrency --------------------------------------------------------------
@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -- 2. Python setup ------------------------------------------------------
-      # Python 3.11 — compatible with all existing project dependencies.
+      # Python 3.11 ï¿½ compatible with all existing project dependencies.
       - name: "Set up Python 3.11"
         uses: actions/setup-python@v5
         with:
@@ -105,11 +105,11 @@ jobs:
           echo "  Mode   : --run-now"
           python -c "import sys; sys.exit(0 if __import__('pathlib').Path('prototype/ML/ml/daily_pipeline.py').exists() else 1)" \
             && echo "  Status : EXISTS" \
-            || { echo "::error::daily_pipeline.py not found — check repository structure."; exit 1; }
+            || { echo "::error::daily_pipeline.py not found ï¿½ check repository structure."; exit 1; }
 
           echo ""
           echo "=== Data asset check ==="
-          # cpi_713.xlsx is needed by index_calculator.py — must be in repo
+          # cpi_713.xlsx is needed by index_calculator.py ï¿½ must be in repo
           python -c "
           from pathlib import Path
           import sys
@@ -143,7 +143,7 @@ jobs:
 
       # -- 9. Run the SkyRate pipeline ------------------------------------------
       # Working directory is prototype/ML so that all relative paths
-      # (sessions/, cpi_713.xlsx, sources/) resolve correctly — matching
+      # (sessions/, cpi_713.xlsx, sources/) resolve correctly ï¿½ matching
       # how the pipeline is run locally on Windows.
       #
       # daily_pipeline.py --run-now performs, in order:
