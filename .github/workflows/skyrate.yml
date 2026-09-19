@@ -1,23 +1,22 @@
-name: SkyRate Daily Pipeline
+﻿name: SkyRate Daily Pipeline
 
-# --- Schedule -----------------------------------------------------------------
+# ─── Schedule ─────────────────────────────────────────────────────────────────
 # 12:00 AM IST = 00:00 Asia/Kolkata = 18:30 UTC (previous day)
 # GitHub Actions cron uses UTC only.
 on:
-  push:
   schedule:
     - cron: "30 18 * * *"   # 18:30 UTC = 00:00 IST next day
   workflow_dispatch:          # Allow manual runs from the GitHub Actions UI
 
-# --- Concurrency --------------------------------------------------------------
+# ─── Concurrency ──────────────────────────────────────────────────────────────
 # Prevent two pipeline runs from executing simultaneously.
-# cancel-in-progress: false ? a new scheduled event waits; it does NOT kill
+# cancel-in-progress: false → a new scheduled event waits; it does NOT kill
 # an already-running scraper (scraping cannot be aborted mid-flight safely).
 concurrency:
   group: skyrate-pipeline
   cancel-in-progress: false
 
-# --- Default permissions -------------------------------------------------------
+# ─── Default permissions ───────────────────────────────────────────────────────
 permissions:
   contents: read
 
@@ -30,9 +29,9 @@ jobs:
     # 6 hours gives generous headroom while still failing loudly if something hangs.
     timeout-minutes: 360
 
-    # -- All Supabase credentials come from GitHub Actions Secrets -------------
+    # ── All Supabase credentials come from GitHub Actions Secrets ─────────────
     # Never hardcode secret values. Set these in:
-    # Repository ? Settings ? Secrets and variables ? Actions ? New repository secret
+    # Repository → Settings → Secrets and variables → Actions → New repository secret
     env:
       SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY:       ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -41,18 +40,18 @@ jobs:
 
     steps:
 
-      # -- 1. Checkout ----------------------------------------------------------
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: "Checkout repository"
         uses: actions/checkout@v4
 
-      # -- 2. Python setup ------------------------------------------------------
-      # Python 3.11 � compatible with all existing project dependencies.
+      # ── 2. Python setup ──────────────────────────────────────────────────────
+      # Python 3.11 — compatible with all existing project dependencies.
       - name: "Set up Python 3.11"
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # -- 3. Cache pip dependencies --------------------------------------------
+      # ── 3. Cache pip dependencies ────────────────────────────────────────────
       - name: "Cache pip packages"
         uses: actions/cache@v4
         with:
@@ -61,13 +60,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # -- 4. Install Python dependencies ---------------------------------------
+      # ── 4. Install Python dependencies ───────────────────────────────────────
       - name: "Install Python dependencies"
         run: |
           python -m pip install --upgrade pip
           pip install -r prototype/ML/requirements.txt
 
-      # -- 5. Install Playwright Chromium + OS dependencies ---------------------
+      # ── 5. Install Playwright Chromium + OS dependencies ─────────────────────
       # Playwright needs Chromium browser binaries AND system-level libs (fonts,
       # libpng, libglib, etc.) that are not shipped with the Python package.
       # --with-deps installs both in one command.
@@ -75,13 +74,13 @@ jobs:
         run: |
           playwright install --with-deps chromium
 
-      # -- 6. Validate secrets are present --------------------------------------
+      # ── 6. Validate secrets are present ──────────────────────────────────────
       # Fail early with a clear message rather than a cryptic Supabase error.
       - name: "Validate required secrets are configured"
         run: |
           missing=0
           if [ -z "$SUPABASE_URL" ]; then
-            echo "::error::Secret SUPABASE_URL is not set. Add it in Repository ? Settings ? Secrets."
+            echo "::error::Secret SUPABASE_URL is not set. Add it in Repository → Settings → Secrets."
             missing=1
           fi
           if [ -z "$SUPABASE_SECRET_KEY" ]; then
@@ -96,7 +95,7 @@ jobs:
           fi
           echo "All required secrets are configured."
 
-      # -- 7. Confirm pipeline entry point and data assets exist -----------------
+      # ── 7. Confirm pipeline entry point and data assets exist ─────────────────
       - name: "Confirm pipeline entry point"
         run: |
           echo "=== Pipeline entry point ==="
@@ -104,11 +103,11 @@ jobs:
           echo "  Mode   : --run-now"
           python -c "import sys; sys.exit(0 if __import__('pathlib').Path('prototype/ML/ml/daily_pipeline.py').exists() else 1)" \
             && echo "  Status : EXISTS" \
-            || { echo "::error::daily_pipeline.py not found � check repository structure."; exit 1; }
+            || { echo "::error::daily_pipeline.py not found — check repository structure."; exit 1; }
 
           echo ""
           echo "=== Data asset check ==="
-          # cpi_713.xlsx is needed by index_calculator.py � must be in repo
+          # cpi_713.xlsx is needed by index_calculator.py — must be in repo
           python -c "
           from pathlib import Path
           import sys
@@ -125,7 +124,7 @@ jobs:
               print(f'  {f} : EXISTS')
           "
 
-      # -- 8. Show run context ---------------------------------------------------
+      # ── 8. Show run context ───────────────────────────────────────────────────
       - name: "Show run context"
         run: |
           echo "============================================================"
@@ -140,9 +139,9 @@ jobs:
           echo "  Ref           : ${{ github.ref }}"
           echo "============================================================"
 
-      # -- 9. Run the SkyRate pipeline ------------------------------------------
+      # ── 9. Run the SkyRate pipeline ──────────────────────────────────────────
       # Working directory is prototype/ML so that all relative paths
-      # (sessions/, cpi_713.xlsx, sources/) resolve correctly � matching
+      # (sessions/, cpi_713.xlsx, sources/) resolve correctly — matching
       # how the pipeline is run locally on Windows.
       #
       # daily_pipeline.py --run-now performs, in order:
@@ -169,7 +168,7 @@ jobs:
           fi
           echo "Pipeline completed successfully at $(TZ='Asia/Kolkata' date +'%H:%M:%S IST')."
 
-      # -- 10. Upload logs on failure (always runs, even if pipeline fails) ------
+      # ── 10. Upload logs on failure (always runs, even if pipeline fails) ──────
       # Preserves pipeline logs so failures can be debugged from the Actions UI.
       # Logs are never deleted by the cleanup step (the pipeline intentionally
       # preserves them). This uploads them as a downloadable artifact.
