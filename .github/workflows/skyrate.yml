@@ -23,7 +23,7 @@ permissions:
 jobs:
   run-pipeline:
     name: "SkyRate Airfare Pipeline"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     # Maximum wall-clock time: the full scrape + upload typically takes 20-30 min.
     # 6 hours gives generous headroom while still failing loudly if something hangs.
