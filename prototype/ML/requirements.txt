@@ -6,3 +6,8 @@ supabase
 python-dotenv
 pandas
 tqdm
+# Added — imported by pipeline code but previously missing from requirements.txt
+playwright-stealth
+numpy
+openpyxl
+psycopg2-binary

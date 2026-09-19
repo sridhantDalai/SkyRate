@@ -5,3 +5,8 @@ ml/logs/
 ml/output/
 *.xlsx
 *.csv
+
+# --- Permanent data assets (NOT generated outputs — must be in repo) ---
+# cpi_713.xlsx is the official MoSPI CPI database required by index_calculator.py
+!cpi_713.xlsx
+!sources/cpi_713.xlsx
