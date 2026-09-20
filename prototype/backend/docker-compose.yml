@@ -1,0 +1,41 @@
+# ==============================================================================
+# SkyRate FastAPI Backend - Local Development Docker Compose
+# Configured for local development with auto-reloading and health monitoring.
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: skyrate-backend-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - API_ENV=development
+      - DEBUG=True
+      - HOST=0.0.0.0
+      - PORT=8000
+      - API_PREFIX=/api/v1
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      # Credentials passed from host environment or .env file:
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Mount application code into container for live hot-reload during development
+      - ./app:/app/app:ro
+    # Development override: single worker with auto-reload enabled
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

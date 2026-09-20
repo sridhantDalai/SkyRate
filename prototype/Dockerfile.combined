@@ -1,0 +1,142 @@
+# ==============================================================================
+# SkyRate - Combined All-in-One Production Dockerfile
+# Packages both FastAPI backend (:8000) and Next.js frontend (:3000)
+# into a single self-contained deployable container.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build Python Dependencies (Backend)
+# ------------------------------------------------------------------------------
+FROM python:3.12-slim-bookworm AS backend-builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /install
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install/deps -r requirements.txt \
+    && pip install --no-cache-dir --prefix=/install/deps gunicorn==23.0.0
+
+# ------------------------------------------------------------------------------
+# Stage 2: Build Next.js Application (Frontend)
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS frontend-builder
+
+RUN apk add --no-cache libc6-compat
+WORKDIR /build
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
+
+COPY frontend/package.json frontend/pnpm-lock.yaml* frontend/pnpm-workspace.yaml* ./
+RUN pnpm install --frozen-lockfile
+
+COPY frontend/ .
+
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+RUN pnpm build
+
+# ------------------------------------------------------------------------------
+# Stage 3: Combined Production Runtime
+# ------------------------------------------------------------------------------
+FROM python:3.12-slim-bookworm AS runtime
+
+LABEL org.opencontainers.image.title="SkyRate Combined Platform" \
+      org.opencontainers.image.description="All-in-one FastAPI backend & Next.js frontend container" \
+      org.opencontainers.image.version="1.0.0"
+
+# Install Node.js 20 LTS runtime into the Debian base image
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get purge -y gnupg \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/backend/deps/bin:$PATH" \
+    PYTHONPATH="/app/backend/deps/lib/python3.12/site-packages:/app/backend:$PYTHONPATH" \
+    NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    FRONTEND_PORT=3000 \
+    BACKEND_PORT=8000 \
+    API_ENV=production
+
+WORKDIR /app
+
+# Create unprivileged service user
+RUN groupadd -g 10001 skyrate \
+    && useradd -u 10001 -g skyrate -s /bin/bash -m -d /app skyrate
+
+# Copy Backend files
+COPY --from=backend-builder /install/deps /app/backend/deps
+COPY --chown=skyrate:skyrate backend/app /app/backend/app
+
+# Copy Frontend Standalone & Assets
+COPY --from=frontend-builder --chown=skyrate:skyrate /build/public /app/frontend/public
+COPY --from=frontend-builder --chown=skyrate:skyrate /build/.next/standalone /app/frontend
+COPY --from=frontend-builder --chown=skyrate:skyrate /build/.next/static /app/frontend/.next/static
+
+# Setup combined startup entrypoint
+RUN cat <<'EOF' > /app/entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "========================================================"
+echo " Starting SkyRate Combined Services"
+echo " Backend:  http://0.0.0.0:${BACKEND_PORT:-8000}"
+echo " Frontend: http://0.0.0.0:${FRONTEND_PORT:-3000}"
+echo "========================================================"
+
+# Start FastAPI backend in the background
+cd /app/backend
+python -m uvicorn app.main:app \
+  --host 0.0.0.0 \
+  --port "${BACKEND_PORT:-8000}" \
+  --workers 2 \
+  --proxy-headers \
+  --forwarded-allow-ips "*" &
+BACKEND_PID=$!
+
+# Start Next.js frontend in the background
+cd /app/frontend
+PORT="${FRONTEND_PORT:-3000}" HOSTNAME="0.0.0.0" node server.js &
+FRONTEND_PID=$!
+
+# Graceful shutdown handler
+trap 'echo "Terminating services..."; kill -TERM $BACKEND_PID $FRONTEND_PID 2>/dev/null; wait $BACKEND_PID $FRONTEND_PID' SIGTERM SIGINT
+
+# Monitor child processes
+wait -n $BACKEND_PID $FRONTEND_PID
+EOF
+
+RUN chmod +x /app/entrypoint.sh \
+    && chown -R skyrate:skyrate /app
+
+USER skyrate
+
+EXPOSE 8000 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).getcode() == 200 else 1)" || exit 1
+
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]

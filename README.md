@@ -222,17 +222,39 @@ git clone https://github.com/sridhantDalai/SkyRate.git
 cd SkyRate
 ```
 
-### 3. Launch the prototype
+### 3. Launch with Docker (Recommended)
 
-Open:
+Run both the FastAPI backend and Next.js frontend together in isolated production containers:
 
-```text
-index.html
+```bash
+# Optional: copy and adjust environment variables
+cp .env.docker.example .env
+
+# Build and start all services
+docker compose up --build
 ```
 
-in a modern web browser.
+- **Frontend Dashboard:** [http://localhost:3000](http://localhost:3000)
+- **FastAPI Backend:** [http://localhost:8000](http://localhost:8000)
+- **Interactive OpenAPI Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-For the best development experience, use **VS Code with Live Server**.
+### 4. Running Locally Without Docker
+
+**Backend (FastAPI):**
+```bash
+cd prototype/backend
+python -m venv .venv
+source .venv/bin/activate  # Or on Windows: .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+**Frontend (Next.js):**
+```bash
+cd prototype/frontend
+pnpm install
+pnpm dev
+```
 
 ---
 

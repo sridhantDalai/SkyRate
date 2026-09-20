@@ -1,0 +1,74 @@
+# ==============================================================================
+# SkyRate - Prototype Docker Compose Orchestration
+# Allows running the full stack directly from the prototype directory.
+# ==============================================================================
+
+version: "3.8"
+
+networks:
+  skyrate-net:
+    name: skyrate-net
+    driver: bridge
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: skyrate-backend:latest
+    container_name: skyrate-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - API_ENV=${API_ENV:-production}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - API_PREFIX=/api/v1
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-}
+      - TRUST_PROXY_HEADERS=True
+    env_file:
+      - path: ./backend/.env
+        required: false
+    networks:
+      - skyrate-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).getcode() == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    image: skyrate-frontend:latest
+    container_name: skyrate-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    env_file:
+      - path: ./frontend/.env.local
+        required: false
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - skyrate-net
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
