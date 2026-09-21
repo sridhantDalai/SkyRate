@@ -7,8 +7,6 @@ on:
   schedule:
     - cron: "46 17 * * *"   # 17:50 UTC = 23:20 IST   # 18:30 UTC = 00:00 IST next day
   workflow_dispatch:
-  push:
-    branches: [main, SkyRate-iSys]
 
 # --- Concurrency --------------------------------------------------------------
 # Prevent two pipeline runs from executing simultaneously.
@@ -185,4 +183,5 @@ jobs:
           path: prototype/ML/ml/logs/
           if-no-files-found: ignore
           retention-days: 30
+
 
