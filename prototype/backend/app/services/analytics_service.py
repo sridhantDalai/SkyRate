@@ -24,11 +24,12 @@ class AnalyticsService:
             return cached_val
         from app.repositories.index_repository import IndexRepository
         
-        # 1. Derive flight fare metrics from FareRepository
-        fare_metrics = await FareRepository.get_fares_overview_metrics()
-
-        # 2. Derive index metrics (latest APIx, previous APIx, delta) from IndexRepository
-        apix_metrics = await IndexRepository.get_apix_overview_metrics()
+        # 1 & 2. Run fare + index fetches in parallel to halve latency
+        import asyncio
+        fare_metrics, apix_metrics = await asyncio.gather(
+            FareRepository.get_fares_overview_metrics(),
+            IndexRepository.get_apix_overview_metrics(),
+        )
 
         # 3. Macro indicators
         oil_data = SupabaseManager.load_fallback_macro_oil()

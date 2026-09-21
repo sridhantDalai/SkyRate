@@ -16,7 +16,10 @@ except ImportError:
 class SupabaseManager:
     _client: Optional[Any] = None
     _cached_scraped: Optional[Tuple[str, bool]] = None
+    _cached_scraped_time: float = 0
     _cached_index: Optional[Tuple[str, bool]] = None
+    _cached_index_time: float = 0
+    CACHE_TTL = 900  # 15 minutes
 
     @classmethod
     def get_client(cls) -> Optional[Any]:
@@ -74,7 +77,7 @@ class SupabaseManager:
 
     @classmethod
     def get_scraped_table_name(cls, dt: Optional[datetime] = None) -> str:
-        return f"scraped_on_{cls.format_date_suffix(dt)}"
+        return "scraped_data_active"
 
     @classmethod
     def get_index_table_name(cls, dt: Optional[datetime] = None) -> str:
@@ -83,31 +86,33 @@ class SupabaseManager:
     @classmethod
     async def resolve_active_scraped_table(cls) -> Tuple[str, bool]:
         """
-        Dynamically finds the latest available scraped table by probing today and past days.
+        Dynamically finds the latest available scraped table.
+        Since the table name is now static, it just verifies it exists.
         Caches outcome to avoid redundant network probes.
         Returns: (table_name, is_live_db)
         """
-        if cls._cached_scraped is not None:
+        import time
+        if cls._cached_scraped is not None and (time.time() - cls._cached_scraped_time < cls.CACHE_TTL):
             return cls._cached_scraped
 
         client = cls.get_client()
+        table_name = cls.get_scraped_table_name()
+        
         if not client:
-            cls._cached_scraped = (cls.get_scraped_table_name(), False)
+            cls._cached_scraped = (table_name, False)
             return cls._cached_scraped
 
-        now = datetime.now()
-        for offset in range(8):
-            test_date = now - timedelta(days=offset)
-            table_name = cls.get_scraped_table_name(test_date)
-            try:
-                res = client.table(table_name).select("ID", count="exact").limit(1).execute()
-                if res.data is not None:
-                    cls._cached_scraped = (table_name, True)
-                    return cls._cached_scraped
-            except Exception:
-                continue
+        try:
+            res = client.table(table_name).select("ID", count="exact").limit(1).execute()
+            if res.data is not None:
+                cls._cached_scraped = (table_name, True)
+                cls._cached_scraped_time = time.time()
+                return cls._cached_scraped
+        except Exception:
+            pass
 
-        cls._cached_scraped = (cls.get_scraped_table_name(), False)
+        cls._cached_scraped = (table_name, False)
+        cls._cached_scraped_time = time.time()
         return cls._cached_scraped
 
     @classmethod
@@ -117,7 +122,8 @@ class SupabaseManager:
         Caches outcome to avoid redundant network probes.
         Returns: (table_name, is_live_db)
         """
-        if cls._cached_index is not None:
+        import time
+        if cls._cached_index is not None and (time.time() - cls._cached_index_time < cls.CACHE_TTL):
             return cls._cached_index
 
         client = cls.get_client()
@@ -133,11 +139,13 @@ class SupabaseManager:
                 res = client.table(table_name).select("State", count="exact").limit(1).execute()
                 if res.data is not None:
                     cls._cached_index = (table_name, True)
+                    cls._cached_index_time = time.time()
                     return cls._cached_index
             except Exception:
                 continue
 
         cls._cached_index = (cls.get_index_table_name(), False)
+        cls._cached_index_time = time.time()
         return cls._cached_index
 
     @classmethod

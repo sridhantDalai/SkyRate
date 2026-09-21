@@ -58,7 +58,7 @@ import type {
 // ---------------------------------------------------------------------------
 // Base URL Configuration
 // ---------------------------------------------------------------------------
-const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   revalidate?: number | false;
 }
 
-const DEFAULT_TIMEOUT_MS = 12000;
+const DEFAULT_TIMEOUT_MS = 30000;
 
 async function executeRequest<T>(
   endpoint: string,

@@ -2,11 +2,11 @@ import type { NextConfig } from "next";
 
 function getCsp(): string {
   const isDev = process.env.NODE_ENV !== "production";
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
   const connectSrc = new Set<string>([
     "'self'",
-    "http://localhost:8000",
+    "http://127.0.0.1:8000",
     "http://127.0.0.1:8000",
   ]);
 

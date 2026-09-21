@@ -46,7 +46,7 @@ export function Header() {
       <div className='flex items-center gap-2.5'>
         <HealthIndicator />
         <a
-          href='http://localhost:8000/docs'
+          href='http://127.0.0.1:8000/docs'
           target='_blank'
           rel='noreferrer'
           className='hidden sm:inline-flex'

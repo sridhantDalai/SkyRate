@@ -9,12 +9,12 @@ class TTL:
     METADATA: int = 86400         # 24 h  – airports, carriers, horizons
     ROUTES: int = 3600            # 1 h   – monitored corridor list
     ROUTE_DETAIL: int = 3600      # 1 h   – per-route detail
-    INDEX_OVERVIEW: int = 300     # 5 min – daily ML index (partition-tagged)
-    INDEX_LATEST: int = 300       # 5 min – paginated index records
-    ANALYTICS_OVERVIEW: int = 300 # 5 min – KPI overview (partition-tagged)
+    INDEX_OVERVIEW: int = 1800    # 30 min – daily ML index (partition-tagged)
+    INDEX_LATEST: int = 1800      # 30 min – paginated index records
+    ANALYTICS_OVERVIEW: int = 1800 # 30 min – KPI overview (partition-tagged)
     FEE_BREAKDOWN: int = 3600     # 1 h   – static DGCA fee breakdown
-    CARRIER_ANALYTICS: int = 300  # 5 min – carrier aggregate stats
-    ELASTICITY: int = 300         # 5 min – lead-time curve
+    CARRIER_ANALYTICS: int = 1800  # 30 min – carrier aggregate stats
+    ELASTICITY: int = 1800         # 30 min – lead-time curve
     METHODOLOGY: int = 86400      # 24 h  – static text
 
 
