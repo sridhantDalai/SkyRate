@@ -22,7 +22,7 @@ import math
 import argparse
 import subprocess
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -261,6 +261,46 @@ GRANT ALL ON public."{table}" TO anon, authenticated, service_role;
 """
 
 
+
+def drop_old_scraped_tables(keep_table: str) -> None:
+    """
+    Drops all public.scraped_on_* tables EXCEPT the one we are about to create.
+    This ensures only ONE scraped partition exists at any time.
+    Called at the start of every pipeline run before creating today's table.
+    """
+    db_url = get_db_url()
+    if not db_url:
+        log.warning("SUPABASE_DB_URL not set - cannot drop old scraped tables.")
+        return
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url, connect_timeout=15)
+        conn.autocommit = True
+        cur = conn.cursor()
+        # List all scraped_on_* tables in public schema
+        cur.execute("""
+            SELECT tablename FROM pg_tables
+            WHERE schemaname = 'public' AND tablename LIKE 'scraped_on_%'
+        """)
+        tables = [row[0] for row in cur.fetchall()]
+        dropped = []
+        for t in tables:
+            if t != keep_table:
+                try:
+                    cur.execute(f'DROP TABLE IF EXISTS public."{t}" CASCADE')
+                    dropped.append(t)
+                    log.info(f"Dropped old scraped table: {t}")
+                except Exception as e:
+                    log.warning(f"Could not drop {t}: {e}")
+        cur.close()
+        conn.close()
+        if dropped:
+            log.info(f"Cleaned up {len(dropped)} old scraped table(s): {dropped}")
+        else:
+            log.info("No old scraped tables to clean up.")
+    except Exception as e:
+        log.warning(f"drop_old_scraped_tables failed: {e}")
+
 def run_ddl_psycopg2(sql: str) -> bool:
     """Execute DDL via direct Postgres connection using SUPABASE_DB_URL."""
     db_url = get_db_url()
@@ -486,13 +526,11 @@ def run_pipeline():
     if valid_df is None:
         return
 
-    # ── Same-day rerun safety: TRUNCATE if table already has data ─
-    # Fresh scraper output is authoritative for the current date.
-    # Previous dates are NEVER touched — only today's table.
+    # ── Clear existing data ───────────────────────────────────
+    # We replace the table contents entirely on every run.
     existing_scraped = count_rows(sb, s_table)
     if existing_scraped > 0:
-        log.info(f"Same-day rerun detected: {existing_scraped} existing rows in {s_table}.")
-        log.info(f"Truncating {s_table} — replacing with fresh scraper output …")
+        log.info(f"Clearing {existing_scraped} old rows from {s_table} …")
         try:
             sb.table(s_table).delete().neq("route", "__SKYRATE_NEVER_MATCH__").execute()
             log.info(f"Table {s_table} cleared. Inserting {len(valid_df)} fresh rows.")
