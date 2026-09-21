@@ -158,21 +158,22 @@ jobs:
       # A non-zero exit from any sub-step propagates as a non-zero exit here,
       # which causes GitHub Actions to mark the run as FAILED.
       - name: "Run SkyRate daily pipeline"
-        working-directory: prototype/ML
+        working-directory: prototype/backend
         run: |
-          echo "Starting pipeline at $(TZ='Asia/Kolkata' date +'%H:%M:%S IST')..."
-          python ml/daily_pipeline.py --run-now
+          echo "============================================================"
+          echo "  SkyRate Daily Pipeline - Seed Mode"
+          echo "  Date (IST): $(TZ=Asia/Kolkata date +%Y-%m-%d)"
+          echo "============================================================"
+          TODAY=$(TZ=Asia/Kolkata date +%d-%m-%y)
+          echo "  Seeding DB for date: $TODAY"
+          pip install psycopg2-binary python-dotenv supabase -q
+          python run_pipeline.py "$TODAY"
           EXIT_CODE=$?
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "::error::Pipeline exited with code $EXIT_CODE - Supabase upload or scraping FAILED."
-            echo "Temporary generated files have been preserved for inspection."
+            echo "::error::Pipeline seed failed with code $EXIT_CODE"
             exit $EXIT_CODE
           fi
-          echo "Pipeline completed successfully at $(TZ='Asia/Kolkata' date +'%H:%M:%S IST')."
-
-      # -- 10. Upload logs on failure (always runs, even if pipeline fails) ------
-      # Preserves pipeline logs so failures can be debugged from the Actions UI.
-      # Logs are never deleted by the cleanup step (the pipeline intentionally
+          echo "Pipeline complete at $(TZ=Asia/Kolkata date +%H:%M:%S) IST."
       # preserves them). This uploads them as a downloadable artifact.
       - name: "Upload pipeline logs"
         if: always()
