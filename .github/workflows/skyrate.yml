@@ -169,7 +169,7 @@ jobs:
           TODAY=$(TZ=Asia/Kolkata date +%d-%m-%y)
           echo "  Seeding DB for date: $TODAY"
           pip install psycopg2-binary python-dotenv supabase -q
-          python run_pipeline.py "$TODAY"
+          mkdir -p ../ML/ml/logs && python run_pipeline.py "$TODAY" | tee ../ML/ml/logs/pipeline.log
           EXIT_CODE=$?
           if [ $EXIT_CODE -ne 0 ]; then
             echo "::error::Pipeline seed failed with code $EXIT_CODE"
