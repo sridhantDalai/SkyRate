@@ -101,6 +101,34 @@ def index_table(dt: datetime = None) -> str:
     return f"index_for_{date_suffix(dt)}"
 
 
+def drop_table_psycopg2(table: str) -> bool:
+    """
+    Drop a table via direct Postgres connection.
+    Returns True on success, False if SUPABASE_DB_URL is not set or drop fails.
+    Index tables are NEVER dropped — only scraped_on_ tables may be dropped.
+    """
+    if not table.startswith("scraped_on_"):
+        log.warning(f"drop_table_psycopg2: refusing to drop non-scraped table: {table}")
+        return False
+    db_url = get_db_url()
+    if not db_url:
+        log.warning("SUPABASE_DB_URL not set — cannot drop old scraped table (skipping).")
+        return False
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url, connect_timeout=15)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(f'DROP TABLE IF EXISTS public."{table}"')
+        cur.close()
+        conn.close()
+        log.info(f"Dropped old scraped table: {table}")
+        return True
+    except Exception as e:
+        log.warning(f"Could not drop {table}: {e}")
+        return False
+
+
 def sep(title: str = "", width: int = 60):
     print("\n" + "=" * width)
     if title:
@@ -551,6 +579,24 @@ def run_pipeline():
                     log.error(f"Failed to delete {f}: {e}")
                     files_remaining.append(f)
 
+        # ── Drop YESTERDAY's scraped table ────────────────────
+        # Rule: scraped_on_ tables are ephemeral — only today's is needed.
+        #       index_for_  tables are NEVER dropped — they are historical.
+        # We compute yesterday from run_dt, not datetime.now(), to be safe
+        # across midnight boundary.
+        from datetime import timedelta
+        yesterday_dt      = run_dt - timedelta(days=1)
+        yesterday_scraped = scraped_table(yesterday_dt)
+        sep("DROP YESTERDAY'S SCRAPED TABLE")
+        print(f"  Today's scraped table     : public.{s_table}  (KEPT)")
+        print(f"  Yesterday's scraped table : public.{yesterday_scraped}  (DROPPING)")
+        print(f"  Yesterday's index table   : public.{index_table(yesterday_dt)}  (KEPT — historical)")
+        drop_ok = drop_table_psycopg2(yesterday_scraped)
+        if drop_ok:
+            print(f"  ✓ Dropped public.{yesterday_scraped}")
+        else:
+            print(f"  ! Could not drop public.{yesterday_scraped} — check SUPABASE_DB_URL or drop manually.")
+
         print("\n============================================================")
         print("          SKYRATE DAILY PIPELINE COMPLETE")
         print("============================================================")
@@ -558,10 +604,12 @@ def run_pipeline():
         print("✓ Index data pushed to Supabase")
         print("✓ Both tables verified")
         print("✓ Temporary files deleted")
+        print(f"{'✓' if drop_ok else '!'} Yesterday's scraped table dropped")
         print("✓ Local cleanup verified\n")
         print("Tables:")
-        print(f"  {s_table}")
-        print(f"  {i_table}\n")
+        print(f"  {s_table}  (today's scraped — active)")
+        print(f"  {i_table}  (today's index — active)")
+        print(f"  {index_table(yesterday_dt)}  (yesterday's index — retained)\n")
         print("Cleanup:")
         print(f"  Files generated : {len(generated_files)}")
         print(f"  Files deleted   : {files_deleted}")
