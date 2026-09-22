@@ -1,6 +1,6 @@
 # ✈️ SkyRate
 
-### AI-Powered Airfare Intelligence & Prediction Platform
+### Airfare Intelligence & Prediction Platform
 
 > **Understand the fare. Predict the trend. Book smarter.**
 
