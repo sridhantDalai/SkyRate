@@ -17,27 +17,31 @@ export function HealthIndicator() {
 
   if (isHealthy) {
     return (
-      <Badge
-        variant='success'
-        className='flex items-center gap-1.5 text-[11px] cursor-pointer'
+      <button
+        type='button'
+        className='rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
         onClick={() => refresh()}
-        title='FastAPI Backend is connected. Click to ping.'
+        title='API is connected. Click to check again.'
       >
-        <span className='h-2 w-2 rounded-full bg-emerald-500' />
-        API Live
-      </Badge>
+        <Badge variant='success' className='flex items-center gap-1.5 text-[11px] cursor-pointer'>
+          <span className='h-2 w-2 rounded-full bg-emerald-500' />
+          API Live
+        </Badge>
+      </button>
     );
   }
 
   return (
-    <Badge
-      variant='warning'
-      className='flex items-center gap-1.5 text-[11px] cursor-pointer'
+    <button
+      type='button'
+      className='rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
       onClick={() => refresh()}
-      title='FastAPI backend not detected on :8000. Operating in offline demonstration mode. Click to retry.'
+      title='The API is unavailable. Click to retry.'
     >
-      <span className='h-2 w-2 rounded-full bg-amber-500' />
-      Sample Demo Mode
-    </Badge>
+      <Badge variant='destructive' className='flex items-center gap-1.5 text-[11px] cursor-pointer'>
+        <span className='h-2 w-2 rounded-full bg-red-500' />
+        API Disconnected
+      </Badge>
+    </button>
   );
 }

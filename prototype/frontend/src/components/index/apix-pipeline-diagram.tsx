@@ -17,51 +17,51 @@ import {
 const PIPELINE_STEPS = [
   {
     step: 1,
-    title: 'MoSPI Baseline',
+    title: 'Base Price Reference',
     icon: <Scale className='h-5 w-5 text-blue-500' />,
     badge: 'Base 100.00',
-    description: 'Reference Consumer Price Index base year 2024 published by the Ministry of Statistics & Programme Implementation (MoSPI).',
-    details: 'P_0 base period prices established across monitored DGCA city-pair corridors.',
+    description: 'We use the standard Consumer Price Index (CPI) as our starting point of 100.',
+    details: 'Establishes a normal, baseline price for every monitored flight route.',
   },
   {
     step: 2,
-    title: 'Observed Airfare',
+    title: 'Collecting Flight Prices',
     icon: <Plane className='h-5 w-5 text-indigo-500' />,
-    badge: 'Raw Scrapes',
-    description: 'Empirical gross airfare collection across commercial carriers and booking horizons (T through T+45).',
-    details: 'Collects base fare, passenger service fees, UDF airport tariffs, and seat inventory status.',
+    badge: 'Live Data',
+    description: 'We gather real-time flight prices across all airlines from 1 to 45 days before departure.',
+    details: 'Includes base fare, taxes, airport fees, and current seat availability.',
   },
   {
     step: 3,
-    title: 'Anomaly Filtering',
+    title: 'Data Cleaning',
     icon: <Filter className='h-5 w-5 text-amber-500' />,
-    badge: 'Outlier Rejection',
-    description: 'Statistical sanitization eliminating scrap errors, fare glitches, and extreme non-representative outliers.',
-    details: 'Interquartile range (IQR) boundaries and cancellation status segregation.',
+    badge: 'Quality Check',
+    description: 'We filter out data errors, glitched prices, and extreme outliers.',
+    details: 'Ensures only realistic, bookable prices are used in our calculations.',
   },
   {
     step: 4,
-    title: 'Route / State Aggregation',
+    title: 'Grouping Data',
     icon: <Layers className='h-5 w-5 text-purple-500' />,
-    badge: 'State & Corridors',
-    description: 'Grouping cleaned flight fare observations by origin state, destination, and advance-purchase booking window.',
-    details: 'Weights mapped to historical DGCA seat capacity (Q_0) and active flight frequency (Q_t).',
+    badge: 'By State & Route',
+    description: 'We organize the cleaned prices by the flight origin state and destination.',
+    details: 'Accounts for how busy a route is based on actual flight frequency.',
   },
   {
     step: 5,
-    title: 'Fisher Ideal Index',
+    title: 'Calculating the Index',
     icon: <Calculator className='h-5 w-5 text-emerald-500' />,
-    badge: 'Geometric Mean',
-    description: 'Calculates the geometric mean of Laspeyres base-weighted and Paasche current-weighted price indices.',
-    details: 'APIx_t = 100 × √ [ ( ∑ P_t Q_0 / ∑ P_0 Q_0 ) × ( ∑ P_t Q_t / ∑ P_0 Q_t ) ]',
+    badge: 'Price Formula',
+    description: 'We apply a balanced mathematical formula to compare current prices against our baseline.',
+    details: 'Provides a fair, unbiased view of how much prices have actually changed.',
   },
   {
     step: 6,
-    title: 'Real-Time APIx',
+    title: 'Live Price Index',
     icon: <Activity className='h-5 w-5 text-rose-500' />,
     badge: 'Published Index',
-    description: 'Final published Real-Time Airfare Price Index tracking empirical price inflation and corridor divergence.',
-    details: 'Segmented by national All-India benchmarks and individual state yield indicators.',
+    description: 'The final, easy-to-read number showing real airfare inflation.',
+    details: 'Available as a national average or broken down state-by-state.',
   },
 ];
 
@@ -73,15 +73,15 @@ export function ApixPipelineDiagram() {
           <div className='flex items-center gap-2'>
             <ShieldCheck className='h-5 w-5 text-primary' />
             <CardTitle className='text-base font-semibold'>
-              APIx Computation Pipeline & Data Provenance
+              How We Calculate APIx
             </CardTitle>
           </div>
           <Badge variant='outline' className='text-[10px]'>
-            SIH26056 Methodology
+            Methodology
           </Badge>
         </div>
         <CardDescription className='text-xs'>
-          End-to-end mathematical data lineage from government MoSPI baseline to published Fisher Ideal APIx
+          The step-by-step process of turning raw flight data into a reliable price index
         </CardDescription>
       </CardHeader>
       <CardContent>
