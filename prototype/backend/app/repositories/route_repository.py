@@ -21,7 +21,7 @@ class RouteRepository:
 
         if is_live and client:
             try:
-                res = client.table(table_name).select("route").limit(1000).execute()
+                res = await SupabaseManager.execute(client.table(table_name).select("route").limit(1000))
                 if res.data:
                     unique_routes = sorted(list(set(row["route"] for row in res.data if row.get("route"))))
                     result = []

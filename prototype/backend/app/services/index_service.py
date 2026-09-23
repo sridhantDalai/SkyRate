@@ -31,6 +31,8 @@ class IndexService:
     async def get_latest_index(params: IndexFilterParams) -> LatestIndexResponse:
         filters_applied: Dict[str, Any] = {}
         target_state = params.state.strip() if params.state else None
+        route_key: Optional[str] = None
+        carrier_key: Optional[str] = None
 
         if params.route:
             route_key = params.route.strip().upper()
@@ -43,6 +45,7 @@ class IndexService:
             filters_applied["state"] = target_state
 
         if params.carrier:
+            carrier_key = params.carrier.strip().lower()
             filters_applied["carrier"] = f"{params.carrier.strip()} (Macro aggregate)"
 
         target_horizon = params.horizon.strip().upper() if params.horizon else None
@@ -54,6 +57,7 @@ class IndexService:
         # Cache key encodes all filter dimensions
         cache_key = (
             f"index_latest:{target_state or '*'}:{target_horizon or '*'}"
+            f":route{route_key or '*'}:carrier{carrier_key or '*'}"
             f":lim{params.limit}:off{params.offset}"
         )
 

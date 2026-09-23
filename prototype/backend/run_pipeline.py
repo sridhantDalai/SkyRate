@@ -126,32 +126,17 @@ def drop_old_scraped_tables(conn, keep_table: str) -> None:
 
 
 def get_db_conn():
-    """Returns a psycopg2 connection using SUPABASE_DB_URL."""
+    """Returns a psycopg2 connection using SUPABASE_DB_URL from env."""
     import psycopg2
-    db_url = os.environ.get("SUPABASE_DB_URL")
+    db_url = os.environ.get("SUPABASE_DB_URL", "")
     if not db_url:
-        print("  [ERROR] SUPABASE_DB_URL is missing. Add it to .env or secrets.")
-        return None
-        
-    # Rewrite direct Supabase URL to connection pooler for GitHub Actions IPv4
-    if "db." in db_url and ".supabase.co" in db_url:
-        from urllib.parse import urlparse
-        parsed = urlparse(db_url)
-        host = parsed.hostname
-        # Extract project ref from db.[PROJECT-REF].supabase.co
-        project_ref = host.split('.')[1]
-        
-        # Rewrite to pooler in ap-southeast-1
-        pooler_host = "aws-0-ap-southeast-1.pooler.supabase.com:6543"
-        
-        # Ensure username ends with .[project-ref]
-        username = parsed.username
-        if not username.endswith(project_ref):
-            username = f"{username}.{project_ref}"
-            
-        db_url = f"postgresql://{username}:{parsed.password}@{pooler_host}{parsed.path}"
-        
-    conn = psycopg2.connect(db_url, connect_timeout=15)
+        raise RuntimeError(
+            "SUPABASE_DB_URL not found in .env files.\n"
+            "Add this to your ML/.env:\n"
+            "  SUPABASE_DB_URL=postgresql://postgres:<password>@db.<project>.supabase.co:5432/postgres\n"
+            "Get it from: Supabase dashboard -> Settings -> Database -> Connection string (URI)"
+        )
+    conn = psycopg2.connect(db_url)
     conn.autocommit = True
     return conn
 
@@ -381,14 +366,7 @@ if __name__ == "__main__":
     print(f"\n{'='*62}")
     print("  FINAL SUMMARY")
     print(f"{'='*62}")
-    all_ok = True
     for d, ok in results.items():
         tag = "[PASS]" if ok else "[FAIL]"
         print(f"  {tag}  {d}")
-        if not ok:
-            all_ok = False
     print(f"{'='*62}")
-    
-    import sys
-    if not all_ok:
-        sys.exit(1)

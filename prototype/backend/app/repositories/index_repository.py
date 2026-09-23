@@ -28,7 +28,7 @@ class IndexRepository:
                 if horizon:
                     query = query.eq("Time_Horizon", horizon.strip().upper())
 
-                res = query.range(offset, offset + limit - 1).execute()
+                res = await SupabaseManager.execute(query.range(offset, offset + limit - 1))
                 items = res.data or []
                 total = res.count if res.count is not None else len(items)
                 return items, total, table_name, partition_date
@@ -105,7 +105,7 @@ class IndexRepository:
                     prev_dt = current_dt - timedelta(days=day_back)
                     prev_table = f"index_for_{prev_dt.strftime('%d_%m_%Y')}"
                     try:
-                        res = client.table(prev_table).select("RealTime_APIx").eq("State", "All India").eq("Time_Horizon", "T").limit(1).execute()
+                        res = await SupabaseManager.execute(client.table(prev_table).select("RealTime_APIx").eq("State", "All India").eq("Time_Horizon", "T").limit(1))
                         if res.data and len(res.data) > 0 and res.data[0].get("RealTime_APIx") is not None:
                             previous_apix = float(res.data[0]["RealTime_APIx"])
                             break

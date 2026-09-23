@@ -115,6 +115,12 @@ class LatestFaresParams(BaseModel):
         description="Maximum gross airfare price threshold in INR",
         examples=[7500.0]
     )
+    min_price: Optional[float] = Field(
+        default=None,
+        gt=0,
+        description="Minimum gross airfare price threshold in INR",
+        examples=[3000.0]
+    )
     limit: int = Field(
         default=50,
         ge=1,

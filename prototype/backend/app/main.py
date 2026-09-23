@@ -55,26 +55,6 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Supabase client running in standalone fallback mode.")
 
-    # Pre-warm all heavy caches in parallel so the first browser request is instant
-    logger.info("Pre-warming API caches...")
-    try:
-        import asyncio as _asyncio
-        from app.services.analytics_service import AnalyticsService
-        from app.repositories.index_repository import IndexRepository
-        from app.schemas.analytics import LeadTimeAnalysisParams, CarrierAnalyticsParams
-
-        await _asyncio.gather(
-            AnalyticsService.get_overview(),
-            IndexRepository.get_apix_overview_metrics(),
-            IndexRepository.get_index_records(),
-            AnalyticsService.get_lead_time_behaviour(LeadTimeAnalysisParams(route="DEL-BOM")),
-            AnalyticsService.get_carriers_analytics(CarrierAnalyticsParams(route="DEL-BOM")),
-            return_exceptions=True,
-        )
-        logger.info("Cache pre-warming complete.")
-    except Exception as e:
-        logger.warning(f"Cache pre-warming failed (non-fatal): {e}")
-
     yield
 
     logger.info(f"Shutting down {settings.PROJECT_NAME}")

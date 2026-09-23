@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { HealthIndicator } from './health-indicator';
 import { Button } from '@/components/ui/button';
+import { API_BASE_URL } from '@/lib/api';
 import { Plane, Menu, X, ExternalLink } from 'lucide-react';
 import { NAVIGATION_ITEMS } from '@/lib/constants';
 
@@ -15,6 +16,17 @@ export function Header() {
   const currentNav = NAVIGATION_ITEMS.find(
     (n) => pathname === n.href || (n.href !== '/dashboard' && pathname?.startsWith(n.href))
   );
+  const docsHref = API_BASE_URL.endsWith('/api/v1')
+    ? `${API_BASE_URL.slice(0, -7)}/docs`
+    : `${API_BASE_URL}/docs`;
+
+  React.useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
 
   return (
     <header className='sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/80 bg-background/80 px-4 sm:px-6 backdrop-blur-md'>
@@ -24,6 +36,9 @@ export function Header() {
           size='icon-sm'
           className='md:hidden'
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={mobileMenuOpen}
+          aria-controls='mobile-navigation'
         >
           {mobileMenuOpen ? <X className='h-5 w-5' /> : <Menu className='h-5 w-5' />}
         </Button>
@@ -46,7 +61,7 @@ export function Header() {
       <div className='flex items-center gap-2.5'>
         <HealthIndicator />
         <a
-          href='http://127.0.0.1:8000/docs'
+          href={docsHref}
           target='_blank'
           rel='noreferrer'
           className='hidden sm:inline-flex'
@@ -58,7 +73,7 @@ export function Header() {
       </div>
 
       {mobileMenuOpen && (
-        <div className='absolute top-16 left-0 w-full border-b border-border bg-background p-4 shadow-lg md:hidden flex flex-col space-y-2 animate-in slide-in-from-top-2'>
+        <nav id='mobile-navigation' aria-label='Primary navigation' className='absolute top-16 left-0 w-full border-b border-border bg-background p-4 shadow-lg md:hidden flex flex-col space-y-2 animate-in slide-in-from-top-2'>
           {NAVIGATION_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -73,7 +88,7 @@ export function Header() {
               {item.name}
             </Link>
           ))}
-        </div>
+        </nav>
       )}
     </header>
   );

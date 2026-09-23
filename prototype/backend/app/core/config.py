@@ -17,6 +17,17 @@ DEFAULT_CORS_METHODS: List[str] = ["GET", "POST", "OPTIONS"]
 DEFAULT_CORS_HEADERS: List[str] = ["*"]
 
 
+def parse_bool_setting(v: Any) -> bool:
+    """Accept conventional boolean environment values without crashing on host noise."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    if isinstance(v, str):
+        return v.strip().lower() in ("true", "1", "yes", "on")
+    return False
+
+
 def parse_cors_methods(v: Any) -> List[str]:
     """
     Parses and standardizes CORS allowed methods.
@@ -163,6 +174,14 @@ class Settings(SettingsBase):
     @classmethod
     def assemble_cors_methods(cls, v: Any) -> List[str]:
         return parse_cors_methods(v)
+
+    @field_validator(
+        "DEBUG", "CORS_ALLOW_CREDENTIALS", "RATE_LIMIT_ENABLED",
+        "TRUST_PROXY_HEADERS", "ENABLE_CACHE_CLEAR_ENDPOINT", mode="before"
+    )
+    @classmethod
+    def assemble_boolean_settings(cls, v: Any) -> bool:
+        return parse_bool_setting(v)
 
     @model_validator(mode="after")
     def validate_cors_security(self) -> "Settings":

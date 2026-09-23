@@ -86,8 +86,10 @@ class FareRepository:
                     query = query.eq("is_non_stop", filters.nonstop)
                 if filters.max_price is not None:
                     query = query.lte("gross_fare", filters.max_price)
+                if filters.min_price is not None:
+                    query = query.gte("gross_fare", filters.min_price)
 
-                res = query.range(filters.offset, filters.offset + filters.limit - 1).execute()
+                res = await SupabaseManager.execute(query.range(filters.offset, filters.offset + filters.limit - 1))
                 items = res.data or []
                 total = res.count if res.count is not None else len(items)
                 return items, total, table_name, partition_date
@@ -105,8 +107,8 @@ class FareRepository:
                 filtered = [f for f in filtered if f["route"].endswith(f"-{filters.destination}")]
 
         if filters.carrier:
-            c_low = filters.carrier.lower()
-            filtered = [f for f in filtered if c_low in f["carrier"].lower()]
+            c_low = normalize_carrier_filter(filters.carrier).lower()
+            filtered = [f for f in filtered if c_low in f["carrier"].lower().replace(" ", "")]
         if filters.horizon:
             filtered = [f for f in filtered if f["t_window"] == filters.horizon]
         if filters.status:
@@ -115,6 +117,8 @@ class FareRepository:
             filtered = [f for f in filtered if f["is_non_stop"] == filters.nonstop]
         if filters.max_price is not None:
             filtered = [f for f in filtered if f.get("gross_fare") is not None and f["gross_fare"] <= filters.max_price]
+        if filters.min_price is not None:
+            filtered = [f for f in filtered if f.get("gross_fare") is not None and f["gross_fare"] >= filters.min_price]
 
         total = len(filtered)
         paged = filtered[filters.offset : filters.offset + filters.limit]
@@ -189,7 +193,7 @@ class FareRepository:
                         q = q.ilike("carrier", f"%{params.carrier}%")
                     if params.horizon:
                         q = q.eq("t_window", params.horizon)
-                    res = q.execute()
+                    res = await SupabaseManager.execute(q)
                     if res.data:
                         fares = [r["gross_fare"] for r in res.data if r.get("gross_fare") is not None]
                         if fares:
@@ -256,7 +260,7 @@ class FareRepository:
 
         if is_live and client:
             try:
-                res = client.table(active_table).select("route, carrier, gross_fare", count="exact").execute()
+                res = await SupabaseManager.execute(client.table(active_table).select("route, carrier, gross_fare", count="exact"))
                 records = res.data or []
                 total_observed = res.count if res.count is not None else len(records)
             except Exception as e:
@@ -321,7 +325,7 @@ class FareRepository:
                 if carrier:
                     query = query.ilike("carrier", f"%{normalize_carrier_filter(carrier)}%")
                 query = query.not_.is_("gross_fare", "null")
-                res = query.execute()
+                res = await SupabaseManager.execute(query)
                 records = res.data or []
             except Exception as e:
                 logger.error(f"Error querying lead-time fares from {table_name}: {e}")
@@ -372,7 +376,7 @@ class FareRepository:
                         query = query.eq("route", route.upper())
                     if horizon:
                         query = query.eq("t_window", horizon)
-                    res = query.execute()
+                    res = await SupabaseManager.execute(query)
                     batch = res.data or []
                     records.extend(batch)
                     if len(batch) < batch_size:

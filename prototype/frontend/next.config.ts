@@ -2,11 +2,11 @@ import type { NextConfig } from "next";
 
 function getCsp(): string {
   const isDev = process.env.NODE_ENV !== "production";
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
   const connectSrc = new Set<string>([
     "'self'",
-    "http://127.0.0.1:8000",
+    "http://localhost:8000",
     "http://127.0.0.1:8000",
   ]);
 
@@ -55,6 +55,21 @@ function getCsp(): string {
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/index",
+        destination: "/apix",
+        permanent: false,
+      },
+    ];
+  },
+  async rewrites() {
+    return [{
+      source: "/api/v1/:path*",
+      destination: `${process.env.BACKEND_INTERNAL_URL || "http://localhost:8000/api/v1"}/:path*`,
+    }];
+  },
   async headers() {
     return [
       {

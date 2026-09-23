@@ -188,3 +188,28 @@ pytest
 uvicorn app.main:app --reload --port 8000
 ```
 Interactive documentation will be available at `http://localhost:8000/docs`.
+
+## ▲ Deploying the Backend on Vercel
+
+Create a Vercel project with `prototype/backend` as its **Root Directory**. The
+included `pyproject.toml` explicitly exports `app.main:app`, so all existing
+routes remain available under `/api/v1` (for example,
+`/api/v1/health`). Vercel installs the existing `requirements.txt` and uses
+Python 3.12.
+
+Set these Vercel environment variables before deploying:
+
+```text
+API_ENV=production
+SUPABASE_URL=<your Supabase URL>
+SUPABASE_SECRET_KEY=<server-only Supabase key>
+SUPABASE_PUBLISHABLE_KEY=<optional public key>
+CORS_ORIGINS=https://<your-frontend>.vercel.app
+TRUST_PROXY_HEADERS=true
+ADMIN_SECRET=<long random value>
+ENABLE_CACHE_CLEAR_ENDPOINT=false
+```
+
+Deploy with either the Vercel dashboard or `vercel --prod` from this directory.
+The cache and rate limiter are process-local on serverless instances; use a
+shared store if globally consistent rate limiting is required.
