@@ -3,13 +3,12 @@
 import * as React from 'react';
 import { useFilters } from '@/hooks/use-filters';
 import { MONITORED_ROUTES, AIRLINE_CARRIERS, AIRPORT_METADATA, HORIZONS } from '@/lib/constants';
-import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { DashboardFilters } from '@/types/filters';
-import { RotateCcw, SlidersHorizontal, Search } from 'lucide-react';
+import { RotateCcw, SlidersHorizontal } from 'lucide-react';
 
 const AIRPORTS = Object.entries(AIRPORT_METADATA).map(([code, meta]) => ({
   code,
@@ -26,12 +25,8 @@ interface FilterBarProps {
   defaults?: Partial<DashboardFilters>;
   /** Additional class for the outer wrapper. */
   className?: string;
-  /** Show a search text input (debounced). */
-  withSearch?: boolean;
   /** Show granularity selector. */
   withGranularity?: boolean;
-  /** Show date range pickers. */
-  withDateRange?: boolean;
   /** Show horizon toggle buttons. */
   withHorizons?: boolean;
   /** Called each time filters change (URL is always the source of truth). */
@@ -48,13 +43,12 @@ export function FilterBar({
   variant = 'full',
   defaults = {},
   className,
-  withSearch = false,
   withGranularity = false,
-  withDateRange = false,
   withHorizons = false,
   onChange,
 }: FilterBarProps) {
-  const { filters, setFilters, setFiltersDebounced, resetFilters } = useFilters(defaults);
+  const { filters, setFilters, resetFilters } = useFilters(defaults);
+  const applyFilter = (partial: Partial<DashboardFilters>) => setFilters({ ...partial, page: undefined });
 
   // Notify parent on each update
   const prevFiltersRef = React.useRef<DashboardFilters>(filters);
@@ -67,13 +61,6 @@ export function FilterBar({
     }
   }, [filters, onChange]);
 
-  const [searchInput, setSearchInput] = React.useState(filters.search ?? '');
-
-  // Keep local search text in sync if URL changes externally (e.g. back/forward)
-  React.useEffect(() => {
-    setSearchInput(filters.search ?? '');
-  }, [filters.search]);
-
   const showRoute = variant === 'full' || variant === 'route-only' || variant === 'corridor-carrier';
   const showOriginDest = variant === 'full';
   const showCarrier = variant === 'full' || variant === 'corridor-carrier';
@@ -82,9 +69,6 @@ export function FilterBar({
     filters.route && filters.route !== defaults.route,
     filters.carrier,
     filters.horizon,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.search,
   ].filter(Boolean).length;
 
   return (
@@ -120,26 +104,6 @@ export function FilterBar({
           variant === 'full' && 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
         )}
       >
-        {/* Optional search */}
-        {withSearch && (
-          <div className='relative'>
-            <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>Search</label>
-            <div className='relative'>
-              <Search className='absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none' />
-              <Input
-                type='text'
-                placeholder='Flight, route, carrier...'
-                value={searchInput}
-                onChange={(e) => {
-                  setSearchInput(e.target.value);
-                  setFiltersDebounced({ search: e.target.value || undefined });
-                }}
-                className='pl-8 text-xs h-8'
-              />
-            </div>
-          </div>
-        )}
-
         {/* Route selector */}
         {showRoute && (
           <div>
@@ -151,7 +115,7 @@ export function FilterBar({
               onChange={(e) => {
                 const val = e.target.value;
                 const parts = val.split('-');
-                setFilters({
+                applyFilter({
                   route: val || undefined,
                   origin: parts[0] || undefined,
                   destination: parts[1] || undefined,
@@ -179,7 +143,7 @@ export function FilterBar({
               onChange={(e) => {
                 const origin = e.target.value;
                 const dest = filters.destination ?? (origin === 'DEL' ? 'BOM' : 'DEL');
-                setFilters({ origin: origin || undefined, destination: dest, route: origin && dest ? `${origin}-${dest}` : undefined });
+                applyFilter({ origin: origin || undefined, destination: dest, route: origin && dest ? `${origin}-${dest}` : undefined });
               }}
             >
               <option value=''>Any Origin</option>
@@ -201,7 +165,7 @@ export function FilterBar({
               onChange={(e) => {
                 const dest = e.target.value;
                 const origin = filters.origin ?? (dest === 'BOM' ? 'DEL' : 'BOM');
-                setFilters({ destination: dest || undefined, origin, route: origin && dest ? `${origin}-${dest}` : undefined });
+                applyFilter({ destination: dest || undefined, origin, route: origin && dest ? `${origin}-${dest}` : undefined });
               }}
             >
               <option value=''>Any Destination</option>
@@ -220,7 +184,7 @@ export function FilterBar({
             </label>
             <Select
               value={filters.carrier ?? ''}
-              onChange={(e) => setFilters({ carrier: e.target.value || undefined })}
+              onChange={(e) => applyFilter({ carrier: e.target.value || undefined })}
             >
               <option value=''>All Carriers</option>
               {AIRLINE_CARRIERS.map((c) => (
@@ -238,7 +202,7 @@ export function FilterBar({
             </label>
             <Select
               value={filters.granularity ?? 'daily'}
-              onChange={(e) => setFilters({ granularity: (e.target.value || 'daily') as 'daily' | 'weekly' | 'monthly' })}
+              onChange={(e) => applyFilter({ granularity: (e.target.value || 'daily') as 'daily' | 'weekly' | 'monthly' })}
             >
               <option value='daily'>Daily</option>
               <option value='weekly'>Weekly</option>
@@ -247,34 +211,6 @@ export function FilterBar({
           </div>
         )}
       </div>
-
-      {/* Date Range Row */}
-      {withDateRange && (
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-border/40'>
-          <div>
-            <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Date From
-            </label>
-            <Input
-              type='date'
-              value={filters.dateFrom ?? ''}
-              onChange={(e) => setFilters({ dateFrom: e.target.value || undefined })}
-              className='text-xs h-8'
-            />
-          </div>
-          <div>
-            <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Date To
-            </label>
-            <Input
-              type='date'
-              value={filters.dateTo ?? ''}
-              onChange={(e) => setFilters({ dateTo: e.target.value || undefined })}
-              className='text-xs h-8'
-            />
-          </div>
-        </div>
-      )}
 
       {/* Horizon Buttons */}
       {withHorizons && (
@@ -287,7 +223,7 @@ export function FilterBar({
               type='button'
               size='sm'
               variant={!filters.horizon ? 'default' : 'outline'}
-              onClick={() => setFilters({ horizon: undefined })}
+              onClick={() => applyFilter({ horizon: undefined })}
               className='text-xs h-7'
             >
               All
@@ -298,7 +234,7 @@ export function FilterBar({
                 type='button'
                 size='sm'
                 variant={filters.horizon === h.value ? 'default' : 'outline'}
-                onClick={() => setFilters({ horizon: filters.horizon === h.value ? undefined : h.value })}
+                onClick={() => applyFilter({ horizon: filters.horizon === h.value ? undefined : h.value })}
                 className='text-xs h-7 font-mono'
                 title={h.description}
               >

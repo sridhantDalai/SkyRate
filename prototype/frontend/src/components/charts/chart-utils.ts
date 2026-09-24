@@ -4,8 +4,8 @@ import { formatINRCompact, formatDateShort, formatMonthLabel } from '@/lib/forma
 export const TOOLTIP_STYLE = {
   borderRadius: '8px',
   border: '1px solid hsl(var(--border))',
-  backgroundColor: 'hsl(var(--popover))',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  backgroundColor: '#020817',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
   padding: '10px 14px',
   fontSize: '11px',
 };

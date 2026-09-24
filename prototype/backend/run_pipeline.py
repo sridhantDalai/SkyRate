@@ -1,26 +1,31 @@
-"""
+﻿"""
 SkyRate Pipeline Simulator
 ===========================
 Mimics the GitHub Actions daily pipeline for any given date.
 Creates `scraped_on_<date>` and `index_for_<date>` tables
-directly in Supabase via PostgreSQL and inserts realistic data.
+directly in Supabase via PostgreSQL and inserts GENUINELY
+date-specific data -- each date produces different index values.
 
 Usage:
-    python run_pipeline.py 19-9-26
-    python run_pipeline.py 19-9-26 20-9-26 21-9-26
-    python run_pipeline.py              <-- interactive prompt
+    python run_pipeline.py 22-9-26          # Run pipeline for Sep 22
+    python run_pipeline.py 22-9-26 23-9-26  # Multiple dates
+    python run_pipeline.py                  # Interactive prompt
+
+Test mode (check what index looks like for any horizon):
+    python run_pipeline.py --test
 """
 
 import os
 import sys
-import asyncio
+import hashlib
 import argparse
-from datetime import datetime
-from urllib.parse import urlparse, unquote
+import random
+from datetime import datetime, date as dt_date, timedelta
+from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# ── Load env vars from BOTH .env files ───────────────────────────────────────
+# Load env vars from BOTH .env files
 def load_env():
     dirs = [
         os.path.join(os.path.dirname(__file__), ".env"),
@@ -37,7 +42,19 @@ def load_env():
 
 load_env()
 
-# ── Realistic scraped fare rows ───────────────────────────────────────────────
+
+# ID GENERATOR -- 8-character hex hash, unique per (table, state, horizon)
+def make_index_id(date_suffix: str, state: str, horizon: str) -> str:
+    """
+    Generates a deterministic 8-character hex ID (non-repeatable across rows).
+    Uses SHA-256 of (date_suffix + state + horizon) -> first 8 hex chars.
+    Guaranteed unique per (date, state, horizon) combination.
+    """
+    raw = f"{date_suffix}|{state}|{horizon}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:8].upper()
+
+
+# FARE ROWS -- static structure, IDs are date-stamped so they never collide
 # (route, carrier, flight_number, nonstop, horizon, base_fare, taxes, udf_fee, gross_fare, status)
 FARE_ROWS = [
     ("DEL-BOM", "IndiGo",    "6E-204",  True,  "T",    9200.0, 1223.0,  77.0, 10500.0, "Available"),
@@ -67,52 +84,194 @@ FARE_ROWS = [
     ("BOM-BLR", "Air India", "AI-302",  True,  "T",    8200.0, 1150.0, 250.0,  9600.0, "Available"),
 ]
 
-# ── Realistic APIx index rows ─────────────────────────────────────────────────
-# (State, Time_Horizon, MoSPI_Base, Basket_Inflation, RealTime_APIx)
-INDEX_ROWS = [
-    ("All India",   "T",    134.2, "14.2%",  153.26),
-    ("All India",   "T+1",  134.2, "11.5%",  149.63),
-    ("All India",   "T+7",  134.2,  "6.8%",  143.33),
-    ("All India",   "T+15", 134.2,  "3.1%",  138.36),
-    ("All India",   "T+30", 134.2, "-0.8%",  133.13),
-    ("All India",   "T+45", 134.2, "-2.5%",  130.85),
-    ("Delhi",       "T",    138.5, "16.4%",  161.21),
-    ("Delhi",       "T+1",  138.5, "13.2%",  156.76),
-    ("Delhi",       "T+7",  138.5,  "8.0%",  149.58),
-    ("Delhi",       "T+15", 138.5,  "4.5%",  144.73),
-    ("Delhi",       "T+30", 138.5,  "0.2%",  138.78),
-    ("Maharashtra", "T",    132.8, "13.2%",  150.33),
-    ("Maharashtra", "T+1",  132.8, "10.5%",  146.74),
-    ("Maharashtra", "T+7",  132.8,  "6.1%",  140.89),
-    ("Maharashtra", "T+15", 132.8,  "2.8%",  136.52),
-    ("Maharashtra", "T+30", 132.8, "-1.2%",  131.21),
-    ("Karnataka",   "T",    136.1, "12.0%",  152.43),
-    ("Karnataka",   "T+1",  136.1,  "9.5%",  149.02),
-    ("Karnataka",   "T+7",  136.1,  "5.5%",  143.59),
-    ("Karnataka",   "T+15", 136.1,  "2.1%",  139.02),
-    ("West Bengal", "T",    130.5, "11.5%",  145.51),
-    ("West Bengal", "T+7",  130.5,  "5.8%",  138.07),
-    ("Tamil Nadu",  "T",    131.2, "10.8%",  145.37),
-    ("Tamil Nadu",  "T+7",  131.2,  "5.2%",  138.02),
-    ("Telangana",   "T",    133.5, "12.5%",  150.19),
-    ("Telangana",   "T+7",  133.5,  "6.3%",  141.91),
-    ("Gujarat",     "T",    129.8, "11.0%",  144.08),
-    ("Gujarat",     "T+7",  129.8,  "5.0%",  136.29),
-]
+
+# STATE BASE PARAMS -- anchored to real MoSPI 2024 base year data
+# Each state: (mospi_base, vol_factor, trend_per_day)
+STATE_PARAMS = {
+    "All India":    (134.2, 0.90, 0.035),
+    "Delhi":        (138.5, 1.10, 0.042),
+    "Maharashtra":  (132.8, 0.85, 0.031),
+    "Karnataka":    (136.1, 0.92, 0.038),
+    "West Bengal":  (130.5, 0.80, 0.028),
+    "Tamil Nadu":   (131.2, 0.83, 0.030),
+    "Telangana":    (133.5, 0.88, 0.033),
+    "Gujarat":      (129.8, 0.78, 0.026),
+}
+
+# Each horizon: (inflation_base_pct, apix_multiplier, decay_per_day)
+HORIZON_PARAMS = {
+    "T":    (14.2, 1.142, 0.0),
+    "T+1":  (11.5, 1.115, 0.8),
+    "T+7":  ( 6.8, 1.068, 0.5),
+    "T+15": ( 3.1, 1.031, 0.3),
+    "T+30": (-0.8, 0.992, 0.2),
+    "T+45": (-2.5, 0.975, 0.15),
+}
+
+# Reference date: Sep 22, 2026 -- the "epoch" from which all drift is measured
+EPOCH = dt_date(2026, 9, 22)
+
+
+def compute_index_rows(run_date: dt_date) -> list:
+    """
+    Computes genuinely date-specific index rows for all states and horizons.
+    Every date produces meaningfully different values for every
+    (state, horizon) combination, with realistic economic drift over time.
+    Algorithm:
+      1. days_elapsed = (run_date - EPOCH)
+      2. Date-seeded PRNG for controlled daily noise (reproducible per date)
+      3. Each state: MoSPI drifts slowly + noise; each horizon: inflation fluctuates
+      4. Seasonal adjustment: Sep-Nov = peak season (Durga Puja, Diwali)
+    """
+    days_elapsed = (run_date - EPOCH).days
+
+    # Seasonal adjustment
+    month = run_date.month
+    if month in (9, 10, 11):
+        seasonal_bias = 0.8 + (month - 9) * 0.3
+    elif month in (12, 1):
+        seasonal_bias = 0.5
+    elif month in (3, 4, 5):
+        seasonal_bias = 0.3
+    else:
+        seasonal_bias = 0.0
+
+    # Date-seeded market shock (same date = same shock; different date = different)
+    rng = random.Random(int(run_date.strftime("%Y%m%d")))
+
+    rows = []
+    for state, (mospi_base, vol_factor, trend) in STATE_PARAMS.items():
+        state_seed = int(hashlib.md5(f"{run_date}{state}".encode()).hexdigest(), 16)
+        state_rng  = random.Random(state_seed)
+
+        mospi_drift = trend * days_elapsed
+        mospi_noise = state_rng.uniform(-0.15, 0.15) * vol_factor
+        mospi_adj   = round(mospi_base + mospi_drift + mospi_noise, 2)
+
+        for horizon, (inf_base, _apix_mult, _decay) in HORIZON_PARAMS.items():
+            h_seed = int(hashlib.md5(f"{run_date}{state}{horizon}".encode()).hexdigest(), 16)
+            h_rng  = random.Random(h_seed)
+
+            if horizon == "T":
+                inf_noise = h_rng.uniform(-1.8, 2.2) * vol_factor
+            elif horizon == "T+1":
+                inf_noise = h_rng.uniform(-1.5, 1.8) * vol_factor
+            elif horizon == "T+7":
+                inf_noise = h_rng.uniform(-1.0, 1.3) * vol_factor
+            elif horizon == "T+15":
+                inf_noise = h_rng.uniform(-0.7, 0.9) * vol_factor
+            elif horizon == "T+30":
+                inf_noise = h_rng.uniform(-0.5, 0.6) * vol_factor
+            else:
+                inf_noise = h_rng.uniform(-0.4, 0.5) * vol_factor
+
+            market_shock = rng.uniform(-0.4, 0.6)
+            inflation    = round(inf_base + inf_noise + market_shock + seasonal_bias, 1)
+            apix         = round(mospi_adj * (1.0 + inflation / 100.0), 2)
+            inf_str      = f"{inflation:+.1f}%" if inflation < 0 else f"{inflation:.1f}%"
+            rows.append((state, horizon, mospi_adj, inf_str, apix))
+
+    return rows
+
+
+def print_index_preview(run_date: dt_date, label: str = None):
+    rows = compute_index_rows(run_date)
+    lbl  = label or run_date.strftime("%d %b %Y (%A)")
+    print(f"\n  {'─'*66}")
+    print(f"  Index for: {lbl}")
+    print(f"  {'─'*66}")
+    print(f"  {'State':<15} {'Horizon':<8} {'MoSPI_Base':<12} {'Inflation':<12} {'RealTime_APIx'}")
+    print(f"  {'─'*66}")
+    for state, horizon, mospi, inf_str, apix in rows:
+        print(f"  {state:<15} {horizon:<8} {mospi:<12.2f} {inf_str:<12} {apix:.2f}")
+    print(f"  {'─'*66}")
+
+
+def run_test_mode():
+    """
+    Interactive test CLI:
+      t      -> show today's index
+      t+1    -> show tomorrow's index
+      t+7    -> 7 days from now
+      t-1    -> yesterday
+      q      -> quit
+    """
+    today = dt_date.today()
+    print("\n" + "="*66)
+    print("  SkyRate Index Test Mode")
+    print("  Type  t      for today's index")
+    print("  Type  t+1    for tomorrow,  t+7  for 7 days out, etc.")
+    print("  Type  t-1    for yesterday, t-3  for 3 days ago, etc.")
+    print("  Type  q      to quit")
+    print("="*66)
+
+    while True:
+        try:
+            inp = input("\n  Enter horizon (e.g. t, t+1, t-3): ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Exiting test mode.")
+            break
+
+        if inp in ("q", "quit", "exit"):
+            print("  Exiting test mode.")
+            break
+
+        if inp == "t" or inp == "t+0":
+            target = today
+            label  = f"TODAY  ({today.strftime('%d %b %Y, %A')})"
+        elif inp.startswith("t+"):
+            try:
+                days   = int(inp[2:])
+                target = today + timedelta(days=days)
+                label  = f"t+{days}  ({target.strftime('%d %b %Y, %A')})"
+            except ValueError:
+                print("  Invalid format. Try  t  t+1  t+7  etc.")
+                continue
+        elif inp.startswith("t-"):
+            try:
+                days   = int(inp[2:])
+                target = today - timedelta(days=days)
+                label  = f"t-{days}  ({target.strftime('%d %b %Y, %A')})"
+            except ValueError:
+                print("  Invalid format. Try  t-1  t-7  etc.")
+                continue
+        else:
+            print("  Invalid input. Use  t  t+1  t+3  t-1  etc.")
+            continue
+
+        print_index_preview(target, label)
+
+
+def get_db_conn():
+    import psycopg2
+    db_url = os.environ.get("SUPABASE_DB_URL")
+    if not db_url:
+        print("  [ERROR] SUPABASE_DB_URL is missing. Add it to .env or secrets.")
+        return None
+    if "db." in db_url and ".supabase.co" in db_url:
+        parsed      = urlparse(db_url)
+        project_ref = parsed.hostname.split(".")[1]
+        pooler_host = "aws-0-ap-southeast-1.pooler.supabase.com:6543"
+        username    = parsed.username
+        if not username.endswith(project_ref):
+            username = f"{username}.{project_ref}"
+        db_url = f"postgresql://{username}:{parsed.password}@{pooler_host}{parsed.path}"
+    conn = psycopg2.connect(db_url, connect_timeout=15)
+    conn.autocommit = True
+    return conn
 
 
 def drop_old_scraped_tables(conn, keep_table: str) -> None:
     """
     Drops all public.scraped_on_* tables EXCEPT the one being created.
-    Ensures only ONE scraped partition exists at any time.
-    Index tables (index_for_*) are NOT touched - they pile up per date.
+    Index tables (index_for_*) are NEVER touched -- they pile up per date.
     """
     cur = conn.cursor()
     cur.execute("""
         SELECT tablename FROM pg_tables
         WHERE schemaname = 'public' AND tablename LIKE 'scraped_on_%'
     """)
-    tables = [row[0] for row in cur.fetchall()]
+    tables  = [row[0] for row in cur.fetchall()]
     dropped = []
     for t in tables:
         if t != keep_table:
@@ -125,47 +284,7 @@ def drop_old_scraped_tables(conn, keep_table: str) -> None:
         print("  No old scraped tables found to drop.")
 
 
-def get_db_conn():
-    """Returns a psycopg2 connection using SUPABASE_DB_URL."""
-    import psycopg2
-    db_url = os.environ.get("SUPABASE_DB_URL")
-    if not db_url:
-        print("  [ERROR] SUPABASE_DB_URL is missing. Add it to .env or secrets.")
-        return None
-        
-    # Rewrite direct Supabase URL to connection pooler for GitHub Actions IPv4
-    if "db." in db_url and ".supabase.co" in db_url:
-        from urllib.parse import urlparse
-        parsed = urlparse(db_url)
-        host = parsed.hostname
-        # Extract project ref from db.[PROJECT-REF].supabase.co
-        project_ref = host.split('.')[1]
-        
-        # Rewrite to pooler in ap-southeast-1
-        pooler_host = "aws-0-ap-southeast-1.pooler.supabase.com:6543"
-        
-        # Ensure username ends with .[project-ref]
-        username = parsed.username
-        if not username.endswith(project_ref):
-            username = f"{username}.{project_ref}"
-            
-        db_url = f"postgresql://{username}:{parsed.password}@{pooler_host}{parsed.path}"
-        
-    conn = psycopg2.connect(db_url, connect_timeout=15)
-    conn.autocommit = True
-    return conn
-
-
 def run_pipeline_for_date(date_input: str) -> bool:
-    """
-    Fully mimics the GitHub Actions daily pipeline for a given date.
-    1. Creates the scraped_on_<date> partition table
-    2. Inserts realistic fare records
-    3. Creates the index_for_<date> partition table
-    4. Inserts APIx index records
-    5. Verifies both tables via SELECT COUNT(*)
-    """
-    # Parse flexible date formats
     dt = None
     for fmt in ("%d-%m-%y", "%d-%m-%Y", "%Y-%m-%d", "%d/%m/%y", "%d/%m/%Y"):
         try:
@@ -176,19 +295,25 @@ def run_pipeline_for_date(date_input: str) -> bool:
 
     if not dt:
         print(f"  [ERROR] Cannot parse date: '{date_input}'")
-        print("          Use format like  19-9-26  or  2026-09-19")
+        print("          Use format like  22-9-26  or  2026-09-22")
         return False
 
+    run_date      = dt.date()
     suffix        = dt.strftime("%d_%m_%Y")
     iso           = dt.strftime("%Y-%m-%d")
     scraped_table = f"scraped_on_{suffix}"
     index_table   = f"index_for_{suffix}"
+    index_rows    = compute_index_rows(run_date)
 
-    print(f"\n{'='*62}")
-    print(f"  Pipeline run for: {iso}")
-    print(f"  Scraped table   : {scraped_table}   ({len(FARE_ROWS)} rows)")
-    print(f"  Index table     : {index_table}     ({len(INDEX_ROWS)} rows)")
-    print(f"{'='*62}")
+    print(f"\n{'='*66}")
+    print(f"  Pipeline run for : {iso}  (days since epoch: {(run_date - EPOCH).days})")
+    print(f"  Scraped table    : {scraped_table}  ({len(FARE_ROWS)} rows)")
+    print(f"  Index table      : {index_table}  ({len(index_rows)} rows)")
+    print(f"{'='*66}")
+    print(f"\n  Sample index values for {iso}:")
+    for s, h, m, inf, apix in index_rows[:4]:
+        print(f"    {s:<15} {h:<8} MoSPI={m:.2f}  Infl={inf}  APIx={apix:.2f}")
+    print(f"    ... (+{len(index_rows)-4} more rows)\n")
 
     try:
         conn = get_db_conn()
@@ -197,11 +322,9 @@ def run_pipeline_for_date(date_input: str) -> bool:
         print(f"  [ERROR] DB connection failed: {e}")
         return False
 
-    # ── STEP 0: Drop old scraped_on_* tables (index tables pile up, scraped DOES NOT) ──
     print("  [0/4] Dropping old scraped tables (keeping only today's)...")
     drop_old_scraped_tables(conn, keep_table=scraped_table)
 
-    # ── STEP 1: Create scraped partition table ────────────────────────────────
     print("  [1/4] Creating scraped table...", end=" ", flush=True)
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS public."{scraped_table}" (
@@ -222,14 +345,12 @@ def run_pipeline_for_date(date_input: str) -> bool:
     """)
     print("OK")
 
-    # ── STEP 2: Insert fare rows ──────────────────────────────────────────────
     print("  [2/4] Inserting fare records...", end=" ", flush=True)
+    from psycopg2.extras import execute_values
     rows_data = []
     for i, (route, carrier, fn, nonstop, horizon, base, tax, udf, gross, status) in enumerate(FARE_ROWS, 1):
         rid = f"f{suffix.replace('_','')}_{i:03d}"
         rows_data.append((rid, route, carrier, fn, nonstop, horizon, base, tax, udf, gross, status, "SkyRate Network"))
-
-    from psycopg2.extras import execute_values
     execute_values(
         cur,
         f"""INSERT INTO public."{scraped_table}"
@@ -241,28 +362,48 @@ def run_pipeline_for_date(date_input: str) -> bool:
     )
     print(f"OK ({len(rows_data)} rows)")
 
-    # ── STEP 3: Create index partition table ──────────────────────────────────
     print("  [3/4] Creating index table...", end=" ", flush=True)
+    # Check if old schema (no ID col) -- drop and recreate
+    cur.execute(f"""
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = '{index_table}'
+          AND column_name = 'ID'
+    """)
+    has_id_col = cur.fetchone()[0] > 0
+    cur.execute(f"""
+        SELECT COUNT(*) FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = '{index_table}'
+    """)
+    table_exists = cur.fetchone()[0] > 0
+
+    if table_exists and not has_id_col:
+        print(f"\n  [!] Old schema for {index_table} -- dropping and recreating with ID col...")
+        cur.execute(f'DROP TABLE IF EXISTS public."{index_table}" CASCADE')
+
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS public."{index_table}" (
+            "ID"                TEXT          PRIMARY KEY,
             "State"             TEXT          NOT NULL,
             "Time_Horizon"      TEXT          NOT NULL,
             "MoSPI_Base"        NUMERIC(8,2),
             "Basket_Inflation"  TEXT,
             "RealTime_APIx"     NUMERIC(8,2),
             computed_at         TIMESTAMPTZ   DEFAULT NOW(),
-            PRIMARY KEY ("State", "Time_Horizon")
+            UNIQUE ("State", "Time_Horizon")
         );
     """)
     print("OK")
 
-    # ── STEP 4: Insert index rows ─────────────────────────────────────────────
     print("  [4/4] Inserting APIx index records...", end=" ", flush=True)
-    idx_data = [(s, h, m, inf, apix) for s, h, m, inf, apix in INDEX_ROWS]
+    idx_data = []
+    for (state, horizon, mospi, inf_str, apix) in index_rows:
+        row_id = make_index_id(suffix, state, horizon)
+        idx_data.append((row_id, state, horizon, mospi, inf_str, apix))
     execute_values(
         cur,
         f"""INSERT INTO public."{index_table}"
-            ("State", "Time_Horizon", "MoSPI_Base", "Basket_Inflation", "RealTime_APIx")
+            ("ID", "State", "Time_Horizon", "MoSPI_Base", "Basket_Inflation", "RealTime_APIx")
             VALUES %s
             ON CONFLICT ("State", "Time_Horizon") DO UPDATE SET
                 "MoSPI_Base"       = EXCLUDED."MoSPI_Base",
@@ -273,33 +414,133 @@ def run_pipeline_for_date(date_input: str) -> bool:
     )
     print(f"OK ({len(idx_data)} rows)")
 
-    # ── VERIFY ────────────────────────────────────────────────────────────────
     cur.execute(f'SELECT COUNT(*) FROM public."{scraped_table}"')
     scraped_count = cur.fetchone()[0]
     cur.execute(f'SELECT COUNT(*) FROM public."{index_table}"')
-    index_count = cur.fetchone()[0]
-
+    index_count   = cur.fetchone()[0]
     cur.close()
     conn.close()
 
     print()
     print("  VERIFICATION:")
-    print(f"  {scraped_table:35s}  -> {scraped_count} rows in DB")
-    print(f"  {index_table:35s}  -> {index_count} rows in DB")
-
+    print(f"  {scraped_table:38s}  -> {scraped_count} rows in DB")
+    print(f"  {index_table:38s}  -> {index_count} rows in DB")
     ok = scraped_count > 0 and index_count > 0
     if ok:
         print(f"\n  [PASS] Pipeline for {iso} complete!")
     else:
-        print(f"\n  [FAIL] Something went wrong — 0 rows found.")
+        print(f"\n  [FAIL] Something went wrong -- 0 rows found.")
     return ok
 
 
+def fix_existing_index_tables(dates: list) -> None:
+    """
+    Fix mode: drops old identical data from existing index_for_* tables
+    for the given dates and reinserts genuinely date-specific values.
+    Fixes the 23/24 tables that had identical data copied from 22.
+    """
+    print("\n" + "="*66)
+    print("  Fix Mode: Recomputing index values for existing tables")
+    print("="*66)
+    try:
+        conn = get_db_conn()
+        cur  = conn.cursor()
+    except Exception as e:
+        print(f"  [ERROR] DB connection failed: {e}")
+        return
+    from psycopg2.extras import execute_values
+
+    for date_input in dates:
+        dt = None
+        for fmt in ("%d-%m-%y", "%d-%m-%Y", "%Y-%m-%d"):
+            try:
+                dt = datetime.strptime(date_input, fmt)
+                break
+            except ValueError:
+                continue
+        if not dt:
+            print(f"  [SKIP] Cannot parse date: {date_input}")
+            continue
+
+        run_date    = dt.date()
+        suffix      = dt.strftime("%d_%m_%Y")
+        iso         = dt.strftime("%Y-%m-%d")
+        index_table = f"index_for_{suffix}"
+        index_rows  = compute_index_rows(run_date)
+
+        print(f"\n  Fixing: {index_table} ({iso})")
+
+        cur.execute(f"""
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = '{index_table}'
+        """)
+        if cur.fetchone()[0] == 0:
+            print(f"  Table {index_table} does not exist -- will create fresh.")
+            cur.execute(f"""
+                CREATE TABLE public."{index_table}" (
+                    "ID"                TEXT          PRIMARY KEY,
+                    "State"             TEXT          NOT NULL,
+                    "Time_Horizon"      TEXT          NOT NULL,
+                    "MoSPI_Base"        NUMERIC(8,2),
+                    "Basket_Inflation"  TEXT,
+                    "RealTime_APIx"     NUMERIC(8,2),
+                    computed_at         TIMESTAMPTZ   DEFAULT NOW(),
+                    UNIQUE ("State", "Time_Horizon")
+                );
+            """)
+        else:
+            cur.execute(f"""
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = '{index_table}'
+                  AND column_name = 'ID'
+            """)
+            has_id = cur.fetchone()[0] > 0
+            if not has_id:
+                print(f"  Dropping {index_table} (no ID column) and recreating...")
+                cur.execute(f'DROP TABLE IF EXISTS public."{index_table}" CASCADE')
+                cur.execute(f"""
+                    CREATE TABLE public."{index_table}" (
+                        "ID"                TEXT          PRIMARY KEY,
+                        "State"             TEXT          NOT NULL,
+                        "Time_Horizon"      TEXT          NOT NULL,
+                        "MoSPI_Base"        NUMERIC(8,2),
+                        "Basket_Inflation"  TEXT,
+                        "RealTime_APIx"     NUMERIC(8,2),
+                        computed_at         TIMESTAMPTZ   DEFAULT NOW(),
+                        UNIQUE ("State", "Time_Horizon")
+                    );
+                """)
+            else:
+                cur.execute(f'DELETE FROM public."{index_table}"')
+                print(f"  Cleared existing data from {index_table}")
+
+        idx_data = []
+        for (state, horizon, mospi, inf_str, apix) in index_rows:
+            row_id = make_index_id(suffix, state, horizon)
+            idx_data.append((row_id, state, horizon, mospi, inf_str, apix))
+
+        execute_values(
+            cur,
+            f"""INSERT INTO public."{index_table}"
+                ("ID", "State", "Time_Horizon", "MoSPI_Base", "Basket_Inflation", "RealTime_APIx")
+                VALUES %s""",
+            idx_data
+        )
+        cur.execute(f'SELECT COUNT(*) FROM public."{index_table}"')
+        count = cur.fetchone()[0]
+        print(f"  Inserted {count} rows into {index_table}")
+        print("  Sample (All India):")
+        for r in [x for x in index_rows if x[0] == "All India"][:3]:
+            print(f"    {r[0]:<15} {r[1]:<8} MoSPI={r[2]:.2f}  Infl={r[3]}  APIx={r[4]:.2f}")
+
+    cur.close()
+    conn.close()
+    print(f"\n  {'='*66}")
+    print("  Fix complete!")
+
+
 def verify_date(date_input: str):
-    """
-    Quick read-only check: shows sample data from both tables.
-    Runs after seeding to confirm exactly what's in DB.
-    """
     dt = None
     for fmt in ("%d-%m-%y", "%d-%m-%Y", "%Y-%m-%d", "%d/%m/%y", "%d/%m/%Y"):
         try:
@@ -309,16 +550,13 @@ def verify_date(date_input: str):
             continue
     if not dt:
         return
-
     suffix        = dt.strftime("%d_%m_%Y")
     iso           = dt.strftime("%Y-%m-%d")
     scraped_table = f"scraped_on_{suffix}"
     index_table   = f"index_for_{suffix}"
-
     try:
         conn = get_db_conn()
         cur  = conn.cursor()
-
         print(f"\n--- {iso} | {scraped_table} (sample 5) ---")
         cur.execute(f'SELECT "ID", route, carrier, t_window, gross_fare, status FROM public."{scraped_table}" LIMIT 5')
         rows = cur.fetchall()
@@ -327,15 +565,14 @@ def verify_date(date_input: str):
             print("  " + "-" * 62)
             for r in rows:
                 print(f"  {str(r[0]):<25} {str(r[1]):<8} {str(r[2]):<12} {str(r[3]):<8} {r[4]}")
-
-        print(f"\n--- {iso} | {index_table} (sample 5) ---")
-        cur.execute(f'SELECT "State", "Time_Horizon", "RealTime_APIx", "Basket_Inflation" FROM public."{index_table}" LIMIT 5')
+        print(f"\n--- {iso} | {index_table} (sample 6) ---")
+        cur.execute(f'SELECT "ID", "State", "Time_Horizon", "RealTime_APIx", "Basket_Inflation" FROM public."{index_table}" LIMIT 6')
         rows = cur.fetchall()
         if rows:
-            print(f"  {'State':<15} {'Horizon':<8} {'APIx':<10} {'Inflation'}")
-            print("  " + "-" * 45)
+            print(f"  {'ID':<10} {'State':<15} {'Horizon':<8} {'APIx':<10} {'Inflation'}")
+            print("  " + "-" * 52)
             for r in rows:
-                print(f"  {str(r[0]):<15} {str(r[1]):<8} {str(r[2]):<10} {r[3]}")
+                print(f"  {str(r[0]):<10} {str(r[1]):<15} {str(r[2]):<8} {str(r[3]):<10} {r[4]}")
         cur.close()
         conn.close()
     except Exception as e:
@@ -344,21 +581,46 @@ def verify_date(date_input: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="SkyRate Pipeline Simulator — mimics GitHub Actions daily run"
+        description="SkyRate Pipeline Simulator -- mimics GitHub Actions daily run"
     )
-    parser.add_argument(
-        "dates", nargs="*",
-        help="Dates to simulate (e.g.  19-9-26  20-9-26  23-10-27)"
-    )
+    parser.add_argument("dates", nargs="*", help="Dates to simulate (e.g.  22-9-26  23-9-26)")
+    parser.add_argument("--test", action="store_true", help="Interactive test mode (type t, t+1, t+7, etc.)")
+    parser.add_argument("--fix", nargs="+", metavar="DATE", help="Fix existing index tables (recompute fresh values)")
+    parser.add_argument("--preview", action="store_true", help="Preview index values (no DB write)")
     args = parser.parse_args()
+
+    if args.test:
+        run_test_mode()
+        sys.exit(0)
+
+    if args.fix:
+        fix_existing_index_tables(args.fix)
+        sys.exit(0)
+
+    if args.preview:
+        dates = args.dates
+        if not dates:
+            raw   = input("  Dates to preview (space-separated): ")
+            dates = raw.strip().split()
+        for d in dates:
+            dt_obj = None
+            for fmt in ("%d-%m-%y", "%d-%m-%Y", "%Y-%m-%d"):
+                try:
+                    dt_obj = datetime.strptime(d, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if dt_obj:
+                print_index_preview(dt_obj)
+        sys.exit(0)
 
     dates = args.dates
     if not dates:
-        print("=" * 62)
+        print("=" * 66)
         print("  SkyRate Pipeline Simulator")
         print("  Mimics the GitHub Actions daily scraper + index pipeline")
-        print("=" * 62)
-        raw = input("  Enter dates (space-separated, e.g. 19-9-26 20-9-26): ")
+        print("=" * 66)
+        raw   = input("  Enter dates (space-separated, e.g. 22-9-26 23-9-26): ")
         dates = raw.strip().split()
 
     if not dates:
@@ -369,26 +631,22 @@ if __name__ == "__main__":
     for d in dates:
         results[d] = run_pipeline_for_date(d)
 
-    # Print final verification sample from DB
-    print(f"\n{'='*62}")
+    print(f"\n{'='*66}")
     print("  DB Verification (reading back from Supabase)")
-    print(f"{'='*62}")
+    print(f"{'='*66}")
     for d in dates:
         if results[d]:
             verify_date(d)
 
-    # Summary
-    print(f"\n{'='*62}")
+    print(f"\n{'='*66}")
     print("  FINAL SUMMARY")
-    print(f"{'='*62}")
+    print(f"{'='*66}")
     all_ok = True
     for d, ok in results.items():
         tag = "[PASS]" if ok else "[FAIL]"
         print(f"  {tag}  {d}")
         if not ok:
             all_ok = False
-    print(f"{'='*62}")
-    
-    import sys
+    print(f"{'='*66}")
     if not all_ok:
         sys.exit(1)

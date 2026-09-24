@@ -77,7 +77,7 @@ class SupabaseManager:
 
     @classmethod
     def get_scraped_table_name(cls, dt: Optional[datetime] = None) -> str:
-        return "scraped_data_active"
+        return f"scraped_on_{cls.format_date_suffix(dt)}"
 
     @classmethod
     def get_index_table_name(cls, dt: Optional[datetime] = None) -> str:
@@ -86,8 +86,7 @@ class SupabaseManager:
     @classmethod
     async def resolve_active_scraped_table(cls) -> Tuple[str, bool]:
         """
-        Dynamically finds the latest available scraped table.
-        Since the table name is now static, it just verifies it exists.
+        Dynamically finds the latest available scraped table by probing today and past days.
         Caches outcome to avoid redundant network probes.
         Returns: (table_name, is_live_db)
         """
@@ -96,24 +95,28 @@ class SupabaseManager:
             return cls._cached_scraped
 
         client = cls.get_client()
-        table_name = cls.get_scraped_table_name()
-        
         if not client:
-            cls._cached_scraped = (table_name, False)
+            cls._cached_scraped = (cls.get_scraped_table_name(), False)
             return cls._cached_scraped
 
-        try:
-            res = client.table(table_name).select("ID", count="exact").limit(1).execute()
-            if res.data is not None:
-                cls._cached_scraped = (table_name, True)
-                cls._cached_scraped_time = time.time()
-                return cls._cached_scraped
-        except Exception:
-            pass
+        now = datetime.now()
+        for offset in range(8):
+            test_date = now - timedelta(days=offset)
+            table_name = cls.get_scraped_table_name(test_date)
+            try:
+                res = client.table(table_name).select("ID", count="exact").limit(1).execute()
+                if res.data is not None:
+                    cls._cached_scraped = (table_name, True)
+                    cls._cached_scraped_time = time.time()
+                    return cls._cached_scraped
+            except Exception:
+                continue
 
-        cls._cached_scraped = (table_name, False)
+        cls._cached_scraped = (cls.get_scraped_table_name(), False)
         cls._cached_scraped_time = time.time()
         return cls._cached_scraped
+
+
 
     @classmethod
     async def resolve_active_index_table(cls) -> Tuple[str, bool]:
