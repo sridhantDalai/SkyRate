@@ -61,7 +61,7 @@ export function CarrierComparison({ data, isLoading, error, route, onRetry }: Ca
   const chartData = carriers
     .map((c, idx) => ({
       carrier: c.carrier,
-      shortName: c.carrier.replace('Air ', '').replace(' Air', '').slice(0, 8),
+      displayName: c.carrier,
       min: c.minimum ?? c.min_fare ?? 0,
       median: c.median ?? 0,
       avg: c.average ?? c.avg_gross_fare ?? 0,
@@ -99,7 +99,7 @@ export function CarrierComparison({ data, isLoading, error, route, onRetry }: Ca
             <BarChart data={chartData} margin={{ top: 10, right: 12, left: 4, bottom: 0 }}>
               <CartesianGrid strokeDasharray='3 3' stroke='currentColor' className='opacity-10' />
               <XAxis
-                dataKey='shortName'
+                dataKey='displayName'
                 tickLine={false}
                 axisLine={false}
                 tick={AXIS_TICK_STYLE}

@@ -98,6 +98,7 @@
 
 /* ─── Dark Theme (default, applied via `.dark` on <html>) ───────────────── */
 .dark {
+  color-scheme: dark;
   --background: oklch(0.11 0.010 260);
   --foreground: oklch(0.96 0.005 260);
   --card: oklch(0.16 0.012 260);
@@ -150,6 +151,7 @@
 
   html {
     @apply font-sans;
+    color-scheme: dark;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -158,6 +160,18 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  /* Native Select & Option dark styling */
+  select {
+    color-scheme: dark;
+  }
+
+  select option,
+  select optgroup {
+    background-color: #1a1e29;
+    color: #f8fafc;
+    color-scheme: dark;
   }
 
   /* Mathematical/formula serif rendering */

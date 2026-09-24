@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { formatHorizon } from '@/lib/formatters';
 import type { APIxIndexRecord } from '@/types/index';
 
 interface StateIndexTableProps {
@@ -54,8 +55,8 @@ export function StateIndexTable({
                 {r.State}
               </TableCell>
               <TableCell>
-                <Badge variant='outline' className='text-[10px]'>
-                  {r.Time_Horizon}
+                <Badge variant='outline' className='text-[10px] font-medium bg-muted/20 whitespace-nowrap'>
+                  {formatHorizon(r.Time_Horizon)}
                 </Badge>
               </TableCell>
               <TableCell className='text-right text-xs text-muted-foreground'>

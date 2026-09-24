@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, formatNumber } from '@/lib/formatters';
+import { formatCurrency, formatNumber, formatHorizon } from '@/lib/formatters';
 import type { RouteDetails, FareDistributionResponse } from '@/types/fare';
 import type { CarrierAnalyticsResponse, AnalyticsTrendsResponse } from '@/types/analytics';
 import type { StateIndexComparison } from '@/types/index';
@@ -123,7 +123,7 @@ export function RouteKpiSummary({
           {distribution?.partition_date && (
             <Badge variant='outline' className='text-[10px] gap-1 font-mono'>
               <Calendar className='h-3 w-3 text-primary' />
-              Partition: {distribution.partition_date}
+              Date: {distribution.partition_date}
             </Badge>
           )}
         </div>
@@ -143,7 +143,7 @@ export function RouteKpiSummary({
           )}
           {routeDetails?.peak_surge_window && (
             <Badge variant='secondary' className='text-[10px]'>
-              Peak: {routeDetails.peak_surge_window}
+              Peak: {formatHorizon(routeDetails.peak_surge_window)}
             </Badge>
           )}
         </div>
@@ -243,7 +243,7 @@ export function RouteKpiSummary({
                   Availability: <strong className='text-emerald-500 font-mono'>{availablePct}%</strong> ({totalAvailable} seats)
                 </span>
               ) : (
-                <span>Sample from active partition</span>
+                <span>Live observed sample</span>
               )}
             </p>
           </div>

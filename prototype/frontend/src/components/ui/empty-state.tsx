@@ -17,7 +17,7 @@ interface EmptyStateProps {
 
 export function EmptyState({
   title = 'No Data Available',
-  description = 'No observations found for the selected query parameters or partition.',
+  description = 'No observations found for the selected query parameters.',
   actionLabel,
   onAction,
   icon,

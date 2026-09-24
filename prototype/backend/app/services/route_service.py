@@ -37,6 +37,12 @@ class RouteService:
     @staticmethod
     async def get_route_details(route: str) -> Optional[Dict[str, Any]]:
         target = route.strip().upper()
+        if "-" not in target:
+            return None
+        parts = target.split("-")
+        if len(parts) != 2 or len(parts[0]) != 3 or len(parts[1]) != 3:
+            return None
+
         cache_key = f"route_detail:{target}"
 
         async def _fetch():
@@ -45,7 +51,24 @@ class RouteService:
                 if r.get("route") == target:
                     meta = _ROUTE_META.get(target, _DEFAULT_META)
                     return {**r, **meta, "monitored_carriers": _MONITORED_CARRIERS}
-            return None
+
+            # Fallback for valid airport pair format not in master table
+            orig, dest = parts[0], parts[1]
+            orig_city = RouteRepository.CITY_LOOKUP.get(orig, orig)
+            dest_city = RouteRepository.CITY_LOOKUP.get(dest, dest)
+            meta = _ROUTE_META.get(target, _DEFAULT_META)
+            return {
+                "route": target,
+                "origin": orig,
+                "destination": dest,
+                "origin_city": orig_city,
+                "destination_city": dest_city,
+                "density": "Standard",
+                "has_live_data": False,
+                "live_observations": 0,
+                **meta,
+                "monitored_carriers": _MONITORED_CARRIERS,
+            }
 
         return await cache.get_or_fetch(
             key=cache_key,

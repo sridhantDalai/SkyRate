@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatHorizon } from '@/lib/formatters';
 import type { FareItem } from '@/types/fare';
 import type { SkyRateApiError } from '@/lib/api';
 import { Plane, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
@@ -94,8 +94,8 @@ export function FaresTable({
                   {f.carrier}
                 </TableCell>
                 <TableCell>
-                  <Badge variant='outline' className='text-[10px]'>
-                    {f.t_window}
+                  <Badge variant='outline' className='text-[10px] font-medium bg-muted/20 whitespace-nowrap'>
+                    {formatHorizon(f.t_window)}
                   </Badge>
                 </TableCell>
                 <TableCell>

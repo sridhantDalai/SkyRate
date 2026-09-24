@@ -75,7 +75,7 @@ export function ApixTrendChart({ overview, isLoading, error, onRetry }: ApixTren
     return (
       <EmptyState
         title='No APIx Observations'
-        description='No Fisher Ideal index data found for the active partition. Check backend data ingestion.'
+        description='No Fisher Ideal index data found for the active period. Check backend data ingestion.'
         actionLabel='Retry'
         onAction={onRetry}
       />
@@ -115,7 +115,7 @@ export function ApixTrendChart({ overview, isLoading, error, onRetry }: ApixTren
         </div>
         <div className='flex items-center gap-2'>
           <Badge variant='outline' className='text-[10px] font-mono'>
-            {overview?.partition_table ?? 'Active Partition'}
+            National Basket
           </Badge>
           {nationalApix != null && (
             <Badge className='text-[10px] font-mono'>

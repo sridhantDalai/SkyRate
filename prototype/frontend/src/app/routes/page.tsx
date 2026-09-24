@@ -5,14 +5,12 @@ import { useRouteExplorer } from '@/hooks/use-route-explorer';
 import { RouteSearchFilter } from '@/components/routes/route-search-filter';
 import { RouteKpiSummary } from '@/components/routes/route-kpi-summary';
 import { CarrierDistributionTable } from '@/components/routes/carrier-distribution-table';
-import { RouteTrendChart } from '@/components/charts/route-trend-chart';
-import { LeadTimeChart } from '@/components/charts/lead-time-chart';
 import { CarrierComparison } from '@/components/charts/carrier-comparison';
 import { RecentFaresTable } from '@/components/tables/recent-fares-table';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Compass, Clock, Activity } from 'lucide-react';
+import { RefreshCw, Compass, Clock, Activity, Info } from 'lucide-react';
 import { formatTime, formatRelativeTime } from '@/lib/formatters';
 
 const INITIAL_FILTERS = {
@@ -30,7 +28,6 @@ export default function RoutesPage() {
     distribution,
     carrierAnalytics,
     trends,
-    elasticity,
     recentFares,
     indexContext,
     isLoading,
@@ -40,8 +37,8 @@ export default function RoutesPage() {
   } = useRouteExplorer(INITIAL_FILTERS);
 
   const route = filters.route || 'DEL-BOM';
-  const granularity = filters.granularity || 'daily';
   const carrierList = carrierAnalytics?.carriers ?? [];
+  const hasZeroFlights = !isLoading && (recentFares?.items.length ?? 0) === 0 && carrierList.length === 0;
 
   return (
     <div className='space-y-6 animate-in fade-in-50 duration-300'>
@@ -112,6 +109,46 @@ export default function RoutesPage() {
         />
       </section>
 
+      {/* Surveillance Coverage Notice if no observations in current period */}
+      {hasZeroFlights && (
+        <div className='p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in-50 duration-200'>
+          <div className='flex items-start gap-2.5'>
+            <div className='p-1.5 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0'>
+              <Info className='h-4 w-4' />
+            </div>
+            <div>
+              <p className='font-semibold text-foreground text-xs sm:text-sm'>
+                No flight observations recorded for corridor {route} in today's surveillance batch
+              </p>
+              <p className='text-muted-foreground text-[11px] sm:text-xs mt-0.5'>
+                Corridor physical specifications are displayed. To explore live flight observations and airline distributions, select one of the actively monitored routes:
+              </p>
+            </div>
+          </div>
+          <div className='flex items-center gap-1.5 flex-wrap shrink-0'>
+            {[
+              { r: 'DEL-BOM', count: 13 },
+              { r: 'BLR-DEL', count: 4 },
+              { r: 'BOM-GOI', count: 3 },
+              { r: 'DEL-CCU', count: 3 },
+              { r: 'BOM-BLR', count: 2 },
+            ].map(({ r, count }) => (
+              <button
+                key={r}
+                type='button'
+                onClick={() => {
+                  const parts = r.split('-');
+                  updateFilters({ route: r, origin: parts[0], destination: parts[1] });
+                }}
+                className='px-2.5 py-1 rounded-md bg-card hover:bg-primary hover:text-primary-foreground text-foreground border border-border text-[11px] font-mono font-medium transition-colors shadow-xs'
+              >
+                {r} <span className='opacity-75 text-[10px]'>({count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 3. Route KPI Summary (Current Fare, Historical Shift, Observations, Index Context) */}
       <section aria-label='Corridor Key Metrics'>
         <RouteKpiSummary
@@ -125,41 +162,7 @@ export default function RoutesPage() {
         />
       </section>
 
-      {/* 4. Analytical Charts Grid (Fare Trends & Booking Horizon Comparison) */}
-      <section aria-label='Price Trends and Elasticity' className='space-y-4'>
-        <div className='flex items-center justify-between'>
-          <h2 className='text-base font-bold text-foreground'>
-            Fare Evolution & Booking Window Dynamics
-          </h2>
-          <span className='text-xs text-muted-foreground'>
-            FastAPI Live Time Series
-          </span>
-        </div>
-
-        <div className='grid grid-cols-1 xl:grid-cols-2 gap-6'>
-          {/* Historical Fare Trends Chart */}
-          <RouteTrendChart
-            data={trends}
-            isLoading={isLoading}
-            error={error}
-            selectedRoute={route}
-            granularity={granularity}
-            onGranularityChange={(g) => updateFilters({ granularity: g })}
-            onRetry={refetch}
-          />
-
-          {/* Advance Booking Window Elasticity Chart */}
-          <LeadTimeChart
-            data={elasticity}
-            isLoading={isLoading}
-            error={error}
-            route={route}
-            onRetry={refetch}
-          />
-        </div>
-      </section>
-
-      {/* 5. Carrier Analytics & Market Share Comparison */}
+      {/* 4. Carrier Analytics & Market Share Comparison */}
       <section aria-label='Carrier Comparison'>
         <CarrierComparison
           data={carrierAnalytics}
@@ -170,7 +173,7 @@ export default function RoutesPage() {
         />
       </section>
 
-      {/* 6. Airline Distribution Breakdown Table */}
+      {/* 5. Airline Distribution Breakdown Table */}
       <section aria-label='Carrier Distribution Table'>
         <CarrierDistributionTable
           carriers={carrierList}

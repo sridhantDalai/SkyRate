@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { LoadingState } from '@/components/ui/loading-state';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatHorizon } from '@/lib/formatters';
 import type { LatestFaresResponse } from '@/types/fare';
 import type { SkyRateApiError } from '@/lib/api';
 import { CheckCircle2, Plane, Database } from 'lucide-react';
@@ -33,7 +33,7 @@ export function RecentFaresTable({
   onRetry,
 }: RecentFaresTableProps) {
   if (isLoading) {
-    return <LoadingState height='h-48' message='Loading live flight observations from partition...' />;
+    return <LoadingState height='h-48' message='Loading live flight observations...' />;
   }
 
   if (error) {
@@ -53,7 +53,7 @@ export function RecentFaresTable({
     return (
       <EmptyState
         title='No Flight Observations Recorded'
-        description='FastAPI returned zero flight observations for the active query partition.'
+        description='No flight observations recorded for the selected corridor.'
         actionLabel='Retry Query'
         onAction={onRetry}
       />
@@ -73,7 +73,7 @@ export function RecentFaresTable({
                 Flight-Level Price Surveillance Observations
               </CardTitle>
               <Badge variant='outline' className='text-[10px] font-mono'>
-                scraped_on partition
+                Live Observations
               </Badge>
             </div>
             <CardDescription className='text-xs text-muted-foreground mt-1'>
@@ -95,14 +95,13 @@ export function RecentFaresTable({
               <TableHead className='w-[90px]'>Flight No.</TableHead>
               <TableHead>Carrier</TableHead>
               <TableHead>Route</TableHead>
-              <TableHead>Window</TableHead>
+              <TableHead>Departure Window</TableHead>
               <TableHead>Type</TableHead>
               <TableHead className='text-right'>Base Fare</TableHead>
               <TableHead className='text-right'>Taxes</TableHead>
               <TableHead className='text-right text-primary font-semibold'>UDF Fee</TableHead>
               <TableHead className='text-right font-bold'>Gross Fare</TableHead>
               <TableHead className='text-center'>Status</TableHead>
-              <TableHead className='text-center'>Source</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -123,8 +122,8 @@ export function RecentFaresTable({
                     {f.route}
                   </TableCell>
                   <TableCell>
-                    <Badge variant='outline' className='text-[10px] font-mono font-semibold'>
-                      {f.t_window}
+                    <Badge variant='outline' className='text-[10px] font-medium bg-muted/20 whitespace-nowrap'>
+                      {formatHorizon(f.t_window)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -156,11 +155,6 @@ export function RecentFaresTable({
                       className='text-[10px]'
                     >
                       {f.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className='text-center'>
-                    <Badge variant='secondary' className='text-[9px] font-mono'>
-                      {f.source || 'Scraper'}
                     </Badge>
                   </TableCell>
                 </TableRow>

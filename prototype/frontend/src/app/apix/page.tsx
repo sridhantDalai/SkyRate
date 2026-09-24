@@ -4,11 +4,11 @@ import * as React from 'react';
 import { useIndex } from '@/hooks/use-index';
 import { useFares } from '@/hooks/use-fares';
 
-import { ApixPipelineDiagram } from '@/components/index/apix-pipeline-diagram';
 import { StateIndexComparisonChart } from '@/components/charts/state-index-comparison-chart';
 import { StateHorizonChart } from '@/components/charts/state-horizon-chart';
 import { StateIndexTable } from '@/components/tables/state-index-table';
 import { RecentFaresTable } from '@/components/tables/recent-fares-table';
+import { StateDivergenceHeatmap } from '@/components/dashboard/state-divergence-heatmap';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 
 import {
   RefreshCw, Clock, Database,
-  BarChart3, Activity, Workflow, Search, Filter,
+  BarChart3, Activity, Search, Filter, MapPin,
 } from 'lucide-react';
 import { formatTime, formatRelativeTime } from '@/lib/formatters';
 
@@ -137,15 +137,6 @@ export default function ApixIndexPage() {
                 {formatRelativeTime(lastUpdated)} · {formatTime(lastUpdated)} IST
               </span>
             )}
-            {indexOverview?.partition_table && (
-              <>
-                <span className='text-border'>|</span>
-                <span className='flex items-center gap-1 font-mono'>
-                  <Database className='h-3 w-3 text-primary/80' />
-                  {indexOverview.partition_table}
-                </span>
-              </>
-            )}
             {summary && (
               <>
                 <span className='text-border'>|</span>
@@ -179,18 +170,7 @@ export default function ApixIndexPage() {
         />
       )}
 
-      {/* ── SECTION 1: APIx COMPUTATION PIPELINE ────────────────────────── */}
-      <section aria-label='APIx computation pipeline and data provenance'>
-        <SectionLabel
-          icon={<Workflow className='h-4 w-4' />}
-          title='How APIx is Calculated'
-          sub='A step-by-step view of how we collect and analyze flight prices.'
-          badge='Data Flow'
-        />
-        <ApixPipelineDiagram />
-      </section>
-
-      {/* ── SECTION 2: DUAL VISUAL ANALYTICS CHARTS ──────────────────────── */}
+      {/* ── SECTION 1: DUAL VISUAL ANALYTICS CHARTS ──────────────────────── */}
       <section aria-label='Interactive State-Wise Index Analytics'>
         <SectionLabel
           icon={<BarChart3 className='h-4 w-4' />}
@@ -214,7 +194,8 @@ export default function ApixIndexPage() {
           </div>
         )}
 
-        <div className='grid grid-cols-1 xl:grid-cols-2 gap-6'>
+        <div className='space-y-6'>
+          {/* 1. State-Wise Airfare Price Index vs MoSPI CPI Baseline */}
           <StateIndexComparisonChart
             records={allRecords}
             isLoading={isLoading}
@@ -224,6 +205,45 @@ export default function ApixIndexPage() {
             onRetry={refetch}
           />
 
+          {/* 2. State-Wise APIx Divergence Heatmap (Placed after StateIndexComparisonChart) */}
+          <Card className='border-border/70 overflow-hidden shadow-sm'>
+            <CardHeader className='pb-3 border-b border-border/60 bg-muted/10'>
+              <div className='flex items-center justify-between gap-4 flex-wrap'>
+                <div className='flex items-center gap-2'>
+                  <MapPin className='h-4 w-4 text-primary' />
+                  <CardTitle className='text-sm font-semibold text-foreground'>
+                    State-Wise APIx Divergence Heatmap
+                  </CardTitle>
+                  <CardDescription className='text-xs text-muted-foreground hidden sm:inline'>
+                    Basket inflation vs MoSPI CPI baseline
+                  </CardDescription>
+                </div>
+                <Badge variant='outline' className='text-[10px] font-mono'>
+                  Active Horizon: {selectedHorizon === 'All' ? 'T+1' : selectedHorizon}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className='pt-4 pb-5'>
+              {isLoading ? (
+                <LoadingState height='h-36' message='Loading state divergence intelligence…' />
+              ) : allRecords.length === 0 ? (
+                <EmptyState
+                  title='No State Index Records'
+                  description='No state index records available for the selected criteria.'
+                  actionLabel='Retry Connection'
+                  onAction={refetch}
+                />
+              ) : (
+                <StateDivergenceHeatmap
+                  records={allRecords}
+                  isLoading={isLoading}
+                  horizon={selectedHorizon === 'All' ? 'T+1' : selectedHorizon}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 3. Booking Horizon Escalation Curve */}
           <StateHorizonChart
             records={allRecords}
             selectedState={selectedState}
@@ -235,7 +255,7 @@ export default function ApixIndexPage() {
         </div>
       </section>
 
-      {/* ── SECTION 3: STATE-LEVEL ECONOMETRIC INDEX MATRIX ──────────────── */}
+      {/* ── SECTION 2: STATE-LEVEL ECONOMETRIC INDEX MATRIX ──────────────── */}
       <section aria-label='State-level Econometric Index Matrix Table'>
         <SectionLabel
           icon={<Database className='h-4 w-4' />}
@@ -308,7 +328,7 @@ export default function ApixIndexPage() {
         </Card>
       </section>
 
-      {/* ── SECTION 4: LIVE FLIGHT OBSERVATIONS ───────────────────────────── */}
+      {/* ── SECTION 3: LIVE FLIGHT OBSERVATIONS ───────────────────────────── */}
       <section aria-label='Flight-Level Price Surveillance'>
         <SectionLabel
           icon={<Database className='h-4 w-4' />}
