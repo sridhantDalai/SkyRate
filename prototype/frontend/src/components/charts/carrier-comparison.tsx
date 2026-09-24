@@ -19,7 +19,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { formatINR, formatNumber, formatPercentage } from '@/lib/formatters';
-import { AXIS_TICK_STYLE, inrTickFormatter, CHART_PALETTE, calcYDomain } from './chart-utils';
+import { TOOLTIP_STYLE, AXIS_TICK_STYLE, inrTickFormatter, CHART_PALETTE, calcYDomain } from './chart-utils';
 import type { CarrierAnalyticsResponse } from '@/types/analytics';
 import type { SkyRateApiError } from '@/lib/api';
 
@@ -118,41 +118,14 @@ export function CarrierComparison({ data, isLoading, error, route, onRetry }: Ca
                   if (!active || !payload?.length) return null;
                   const d = payload[0]?.payload;
                   return (
-                    <div
-                      role='tooltip'
-                      style={{
-                        background: '#0f172a',
-                        border: '1px solid #334155',
-                        borderRadius: '10px',
-                        padding: '12px 16px',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                        fontSize: '12px',
-                        minWidth: '180px',
-                        color: '#f1f5f9',
-                      }}
-                    >
-                      <p style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px', color: '#e2e8f0', borderBottom: '1px solid #334155', paddingBottom: '6px' }}>
-                        ✈ {d.carrier}
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: '#34d399', fontWeight: 600 }}>Min Fare</span>
-                          <span style={{ color: '#f1f5f9', fontWeight: 700, fontFamily: 'monospace' }}>{formatINR(d.min)}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: '#818cf8', fontWeight: 600 }}>Median Fare</span>
-                          <span style={{ color: '#f1f5f9', fontWeight: 700, fontFamily: 'monospace' }}>{formatINR(d.median)}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: '#fb7185', fontWeight: 600 }}>Max Fare</span>
-                          <span style={{ color: '#f1f5f9', fontWeight: 700, fontFamily: 'monospace' }}>{formatINR(d.max)}</span>
-                        </div>
-                      </div>
-                      <div style={{ borderTop: '1px solid #334155', marginTop: '8px', paddingTop: '8px', color: '#94a3b8', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <span>📊 {formatNumber(d.observations)} observations</span>
-                        {d.marketShare != null && (
-                          <span>📈 Market share: <strong style={{ color: '#e2e8f0' }}>{formatPercentage(d.marketShare, false, 1)}</strong></span>
-                        )}
+                    <div style={TOOLTIP_STYLE} role='tooltip'>
+                      <p className='font-bold text-foreground mb-1.5'>{d.carrier}</p>
+                      <p className='text-emerald-400'>Min: <span className='font-bold text-foreground'>{formatINR(d.min)}</span></p>
+                      <p className='text-indigo-400'>Median: <span className='font-bold text-foreground'>{formatINR(d.median)}</span></p>
+                      <p className='text-rose-400'>Max: <span className='font-bold text-foreground'>{formatINR(d.max)}</span></p>
+                      <div className='border-t border-border/50 mt-1.5 pt-1.5 text-[10px] text-muted-foreground space-y-0.5'>
+                        <p>Observations: {formatNumber(d.observations)} flights</p>
+                        {d.marketShare != null && <p>Market share: {formatPercentage(d.marketShare, false, 1)}</p>}
                       </div>
                     </div>
                   );

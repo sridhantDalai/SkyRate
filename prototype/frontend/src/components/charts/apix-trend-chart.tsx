@@ -14,8 +14,6 @@ import {
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Info } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -42,7 +40,6 @@ const HORIZON_ORDER = ['T+45', 'T+30', 'T+15', 'T+7', 'T+1', 'T'];
 
 export function ApixTrendChart({ overview, isLoading, error, onRetry }: ApixTrendChartProps) {
   const [mounted, setMounted] = React.useState(false);
-  const [isInfoOpen, setIsInfoOpen] = React.useState(false);
   React.useEffect(() => { setMounted(true); }, []);
 
   if (!mounted || isLoading) {
@@ -117,15 +114,9 @@ export function ApixTrendChart({ overview, isLoading, error, onRetry }: ApixTren
           </CardDescription>
         </div>
         <div className='flex items-center gap-2'>
-          <Button 
-            variant='outline' 
-            size='sm'
-            className='h-7 text-[10px] font-mono gap-1.5 cursor-pointer transition-colors hover:bg-indigo-500/10 hover:text-indigo-400'
-            onClick={() => setIsInfoOpen(!isInfoOpen)}
-          >
-            <Info className='h-3 w-3 text-indigo-500' />
-            {overview?.partition_date ? `Partition: ${overview.partition_date}` : 'Active Partition'}
-          </Button>
+          <Badge variant='outline' className='text-[10px] font-mono'>
+            {overview?.partition_table ?? 'Active Partition'}
+          </Badge>
           {nationalApix != null && (
             <Badge className='text-[10px] font-mono'>
               National: {formatIndex(nationalApix)} pts
@@ -134,16 +125,6 @@ export function ApixTrendChart({ overview, isLoading, error, onRetry }: ApixTren
         </div>
       </CardHeader>
       <CardContent>
-        {isInfoOpen && (
-          <div className='mb-4 p-3 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-xs animate-in fade-in slide-in-from-top-2 duration-200'>
-            <strong className='text-indigo-300'>What is an Active Partition?</strong>
-            <p className='mt-1 text-muted-foreground leading-relaxed'>
-              SkyRate ingests live flight data into date-partitioned SQL tables to prevent data leakage across different observation days. 
-              The current active partition represents the specific daily snapshot of flight prices used to calculate the APIx index shown here. 
-              Changing the dashboard date loads a different partition.
-            </p>
-          </div>
-        )}
         <div
           className='h-[300px] w-full'
           role='img'
