@@ -1,3 +1,6 @@
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+
 export const HORIZONS = [
   { value: 'T', label: 'T (Same Day)', description: '0 days prior' },
   { value: 'T+1', label: 'T+1', description: '1 day prior' },
@@ -39,8 +42,9 @@ export const AIRPORT_METADATA: Record<string, { city: string; name: string; stat
 };
 
 export const NAVIGATION_ITEMS = [
-  { name: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard', description: 'Macro-economic overview and live APIs' },
-  { name: 'APIx Index', href: '/apix', icon: 'TrendingUp', description: 'Real-Time Airfare Price Index & State Divergence' },
+  { name: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard', description: 'Macro-economic overview and live KPIs' },
+  { name: 'Flight Fares', href: '/fares', icon: 'Plane', description: 'Live scraped flight fare explorer & distributions' },
+  { name: 'APIx Index', href: '/index', icon: 'TrendingUp', description: 'Real-Time Airfare Price Index & State Divergence' },
   { name: 'Analytics', href: '/analytics', icon: 'BarChart3', description: 'Advance-purchase elasticity & carrier pricing' },
   { name: 'Routes', href: '/routes', icon: 'Compass', description: 'DGCA monitored aviation corridors & traffic density' },
   { name: 'Methodology', href: '/methodology', icon: 'BookOpen', description: 'Fisher Ideal calculation & SIH26056 specifications' },

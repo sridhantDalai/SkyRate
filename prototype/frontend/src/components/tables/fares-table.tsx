@@ -11,10 +11,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ErrorState } from '@/components/ui/error-state';
 import { formatCurrency } from '@/lib/formatters';
 import type { FareItem } from '@/types/fare';
-import type { SkyRateApiError } from '@/lib/api';
 import { Plane, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 interface FaresTableProps {
@@ -24,8 +22,6 @@ interface FaresTableProps {
   pageSize?: number;
   onPageChange: (page: number) => void;
   isLoading?: boolean;
-  error?: SkyRateApiError | null;
-  onRetry?: () => void;
 }
 
 export function FaresTable({
@@ -35,8 +31,6 @@ export function FaresTable({
   pageSize = 20,
   onPageChange,
   isLoading = false,
-  error,
-  onRetry,
 }: FaresTableProps) {
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
@@ -46,10 +40,6 @@ export function FaresTable({
         <p className='text-sm text-muted-foreground animate-pulse'>Loading flight observations...</p>
       </div>
     );
-  }
-
-  if (error) {
-    return <ErrorState title='Unable to load flight fares' message={error.message} code={error.code} onRetry={onRetry} />;
   }
 
   if (fares.length === 0) {
@@ -64,8 +54,7 @@ export function FaresTable({
 
   return (
     <div className='space-y-4'>
-      <p className='text-[11px] text-muted-foreground md:hidden'>Swipe horizontally to view fare details.</p>
-      <Table className='min-w-[860px]'>
+      <Table>
         <TableHeader>
           <TableRow>
             <TableHead className='w-[100px]'>Flight No.</TableHead>

@@ -56,26 +56,24 @@ async def lifespan(app: FastAPI):
         logger.info("Supabase client running in standalone fallback mode.")
 
     # Pre-warm all heavy caches in parallel so the first browser request is instant
-    # NOTE: Disabled for Vercel deployment to prevent 500 FUNCTION_INVOCATION_FAILED 
-    # due to the strict 10s serverless cold-start timeout.
-    logger.info("Skipping heavy cache pre-warming for Serverless environment.")
-    # try:
-    #     import asyncio as _asyncio
-    #     from app.services.analytics_service import AnalyticsService
-    #     from app.repositories.index_repository import IndexRepository
-    #     from app.schemas.analytics import LeadTimeAnalysisParams, CarrierAnalyticsParams
+    logger.info("Pre-warming API caches...")
+    try:
+        import asyncio as _asyncio
+        from app.services.analytics_service import AnalyticsService
+        from app.repositories.index_repository import IndexRepository
+        from app.schemas.analytics import LeadTimeAnalysisParams, CarrierAnalyticsParams
 
-    #     await _asyncio.gather(
-    #         AnalyticsService.get_overview(),
-    #         IndexRepository.get_apix_overview_metrics(),
-    #         IndexRepository.get_index_records(),
-    #         AnalyticsService.get_lead_time_behaviour(LeadTimeAnalysisParams(route="DEL-BOM")),
-    #         AnalyticsService.get_carriers_analytics(CarrierAnalyticsParams(route="DEL-BOM")),
-    #         return_exceptions=True,
-    #     )
-    #     logger.info("Cache pre-warming complete.")
-    # except Exception as e:
-    #     logger.warning(f"Cache pre-warming failed (non-fatal): {e}")
+        await _asyncio.gather(
+            AnalyticsService.get_overview(),
+            IndexRepository.get_apix_overview_metrics(),
+            IndexRepository.get_index_records(),
+            AnalyticsService.get_lead_time_behaviour(LeadTimeAnalysisParams(route="DEL-BOM")),
+            AnalyticsService.get_carriers_analytics(CarrierAnalyticsParams(route="DEL-BOM")),
+            return_exceptions=True,
+        )
+        logger.info("Cache pre-warming complete.")
+    except Exception as e:
+        logger.warning(f"Cache pre-warming failed (non-fatal): {e}")
 
     yield
 
@@ -158,7 +156,7 @@ app = FastAPI(
     version=settings.VERSION,
     description=API_DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
-    docs_url=None,  # Disabled to use custom dark-themed Scalar UI below
+    docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan
@@ -258,29 +256,6 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
-
-@app.get("/docs", include_in_schema=False)
-async def scalar_docs():
-    from fastapi.responses import HTMLResponse
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>{app.title} - API Docs</title>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-          body {{ margin: 0; padding: 0; background: #0f111a; }}
-        </style>
-      </head>
-      <body>
-        <!-- Scalar API Reference -->
-        <script id="api-reference" data-url="{app.openapi_url}"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
-      </body>
-    </html>
-    """
-    return HTMLResponse(html)
 
 @app.get("/", tags=["Root"], include_in_schema=False)
 async def root():
