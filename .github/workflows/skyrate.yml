@@ -160,19 +160,17 @@ jobs:
       # A non-zero exit from any sub-step propagates as a non-zero exit here,
       # which causes GitHub Actions to mark the run as FAILED.
       - name: "Run SkyRate daily pipeline"
-        working-directory: prototype/backend
+        working-directory: prototype/ML
         run: |
           echo "============================================================"
-          echo "  SkyRate Daily Pipeline - Seed Mode"
+          echo "  SkyRate Daily Pipeline - Production Mode"
           echo "  Date (IST): $(TZ=Asia/Kolkata date +%Y-%m-%d)"
           echo "============================================================"
-          TODAY=$(TZ=Asia/Kolkata date +%d-%m-%y)
-          echo "  Seeding DB for date: $TODAY"
-          pip install psycopg2-binary python-dotenv supabase -q
-          mkdir -p ../ML/ml/logs && python run_pipeline.py "$TODAY" | tee ../ML/ml/logs/pipeline.log
-          EXIT_CODE=$?
+          mkdir -p ml/logs
+          python ml/daily_pipeline.py --run-now 2>&1 | tee ml/logs/pipeline.log
+          EXIT_CODE=${PIPESTATUS[0]}
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "::error::Pipeline seed failed with code $EXIT_CODE"
+            echo "::error::Pipeline failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
           echo "Pipeline complete at $(TZ=Asia/Kolkata date +%H:%M:%S) IST."
