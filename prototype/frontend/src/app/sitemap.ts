@@ -36,7 +36,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/apix`,
+      url: `${baseUrl}/index`,
       lastModified: now,
       changeFrequency: 'daily',
       priority: 0.8,

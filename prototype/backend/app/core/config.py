@@ -151,8 +151,8 @@ class Settings(SettingsBase):
     # CORS Configuration - hardened: explicit methods, no credentials by default, strict origins
     CORS_ORIGINS: Union[List[str], str] = Field(default_factory=lambda: list(DEFAULT_CORS_ORIGINS))
     CORS_ALLOW_CREDENTIALS: bool = os.getenv("CORS_ALLOW_CREDENTIALS", "False").lower() in ("true", "1", "yes")
-    CORS_ALLOW_METHODS: Union[List[str], str] = Field(default_factory=lambda: list(DEFAULT_CORS_METHODS))
-    CORS_ALLOW_HEADERS: Union[List[str], str] = Field(default_factory=lambda: list(DEFAULT_CORS_HEADERS))
+    CORS_ALLOW_METHODS: List[str] = Field(default_factory=lambda: list(DEFAULT_CORS_METHODS))
+    CORS_ALLOW_HEADERS: List[str] = Field(default_factory=lambda: list(DEFAULT_CORS_HEADERS))
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -163,11 +163,6 @@ class Settings(SettingsBase):
     @classmethod
     def assemble_cors_methods(cls, v: Any) -> List[str]:
         return parse_cors_methods(v)
-
-    @field_validator("CORS_ALLOW_HEADERS", mode="before")
-    @classmethod
-    def assemble_cors_headers(cls, v: Any) -> List[str]:
-        return parse_cors_methods(v)  # Reuse parse_cors_methods as it does comma-separated string parsing
 
     @model_validator(mode="after")
     def validate_cors_security(self) -> "Settings":

@@ -5,7 +5,7 @@ name: SkyRate Daily Pipeline
 # GitHub Actions cron uses UTC only.
 on:
   schedule:
-   - cron: "0 22 * * *"   # 22:00 UTC = 03:30 IST next day
+    - cron: "30 19 * * *" #1:00 am 
   workflow_dispatch:
   push:
     branches: [main, SkyRate-iSys]
@@ -160,17 +160,19 @@ jobs:
       # A non-zero exit from any sub-step propagates as a non-zero exit here,
       # which causes GitHub Actions to mark the run as FAILED.
       - name: "Run SkyRate daily pipeline"
-        working-directory: prototype/ML
+        working-directory: prototype/backend
         run: |
           echo "============================================================"
-          echo "  SkyRate Daily Pipeline - Production Mode"
+          echo "  SkyRate Daily Pipeline - Seed Mode"
           echo "  Date (IST): $(TZ=Asia/Kolkata date +%Y-%m-%d)"
           echo "============================================================"
-          mkdir -p ml/logs
-          python ml/daily_pipeline.py --run-now 2>&1 | tee ml/logs/pipeline.log
-          EXIT_CODE=${PIPESTATUS[0]}
+          TODAY=$(TZ=Asia/Kolkata date +%d-%m-%y)
+          echo "  Seeding DB for date: $TODAY"
+          pip install psycopg2-binary python-dotenv supabase -q
+          mkdir -p ../ML/ml/logs && python run_pipeline.py "$TODAY" | tee ../ML/ml/logs/pipeline.log
+          EXIT_CODE=$?
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "::error::Pipeline failed with exit code $EXIT_CODE"
+            echo "::error::Pipeline seed failed with code $EXIT_CODE"
             exit $EXIT_CODE
           fi
           echo "Pipeline complete at $(TZ=Asia/Kolkata date +%H:%M:%S) IST."

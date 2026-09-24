@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-import hashlib
-from datetime import datetime as _dt
 
 
 
@@ -186,10 +184,7 @@ def calculate_fisher_index(df):
         state_baseline = fetch_mospi_state_baseline(state)
         augmented_apix = state_baseline * fisher
         
-        _row_date = _dt.now().strftime("%d_%m_%Y")
-        _row_id   = hashlib.sha256(f"{_row_date}|{state}|{t_window}".encode()).hexdigest()[:8].upper()
         results.append({
-            "ID": _row_id,
             "State": state,
             "Time_Horizon": t_window,
             "MoSPI_Base": state_baseline,
@@ -223,10 +218,7 @@ def calculate_fisher_index(df):
         all_india_baseline = fetch_mospi_state_baseline("All India")
         augmented_apix = all_india_baseline * fisher
         
-        _row_date = _dt.now().strftime("%d_%m_%Y")
-        _row_id   = hashlib.sha256(f"{_row_date}|All India|{t_window}".encode()).hexdigest()[:8].upper()
         results.append({
-            "ID": _row_id,
             "State": "All India",
             "Time_Horizon": t_window,
             "MoSPI_Base": all_india_baseline,
