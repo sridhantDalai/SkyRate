@@ -139,11 +139,11 @@ export function RouteSearchFilter({
         </div>
 
         {/* 2. Origin / Swap / Destination / Carrier Row */}
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1'>
           {/* Origin Selector */}
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Origin
+              Origin Airport
             </label>
             <Select
               value={activeOrigin}
@@ -169,7 +169,7 @@ export function RouteSearchFilter({
           <div>
             <div className='flex items-center justify-between mb-1'>
               <label className='text-[11px] font-semibold text-muted-foreground'>
-                Destination
+                Destination Airport
               </label>
               <button
                 type='button'
@@ -201,10 +201,31 @@ export function RouteSearchFilter({
             </Select>
           </div>
 
+          {/* Monitored Corridors Direct Select */}
+          <div>
+            <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
+              Monitored Trunk Corridors
+            </label>
+            <Select
+              value={filters.route || 'DEL-BOM'}
+              onChange={(e) => {
+                const val = e.target.value;
+                const parts = val.split('-');
+                onUpdateFilters({ route: val, origin: parts[0], destination: parts[1] });
+              }}
+            >
+              {MONITORED_ROUTES.map((r) => (
+                <option key={r.route} value={r.route}>
+                  {r.route} ({r.origin_city} ➔ {r.destination_city})
+                </option>
+              ))}
+            </Select>
+          </div>
+
           {/* Carrier Selector */}
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Carrier
+              Airline Carrier
             </label>
             <Select
               value={filters.carrier || ''}
@@ -220,11 +241,12 @@ export function RouteSearchFilter({
           </div>
         </div>
 
-        {/* 3. Advanced Horizon & Granularity */}
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-border/40'>
+        {/* 3. Advanced Horizon, Granularity & Date Filters */}
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-border/40'>
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Booking Horizon
+              Advance Booking Horizon
+              <span className='ml-1 font-normal opacity-70'>(how early the ticket was booked)</span>
             </label>
             <HorizonFilter
               value={filters.horizon}
@@ -235,7 +257,8 @@ export function RouteSearchFilter({
 
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Aggregation
+              Trend Aggregation
+              <span className='ml-1 font-normal opacity-70'>(chart grouping)</span>
             </label>
             <Select
               value={filters.granularity || 'daily'}
@@ -245,12 +268,49 @@ export function RouteSearchFilter({
                 })
               }
             >
-              <option value='daily'>Daily Grain</option>
-              <option value='weekly'>Weekly Aggregate</option>
-              <option value='monthly'>Monthly Summary</option>
+              <option value='daily'>Daily — every single day</option>
+              <option value='weekly'>Weekly — grouped by week</option>
+              <option value='monthly'>Monthly — grouped by month</option>
             </Select>
           </div>
 
+          <div>
+            <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
+              Date From
+              <span className='ml-1 font-normal opacity-70'>(observation start date)</span>
+            </label>
+            <Input
+              type='date'
+              value={filters.dateFrom || ''}
+              max={filters.dateTo || undefined}
+              onChange={(e) => onUpdateFilters({ dateFrom: e.target.value || undefined })}
+              className='text-xs h-8'
+            />
+          </div>
+
+          <div>
+            <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
+              Date To
+              <span className='ml-1 font-normal opacity-70'>(observation end date)</span>
+            </label>
+            <Input
+              type='date'
+              value={filters.dateTo || ''}
+              min={filters.dateFrom || undefined}
+              onChange={(e) => onUpdateFilters({ dateTo: e.target.value || undefined })}
+              className='text-xs h-8'
+            />
+            {filters.dateFrom && filters.dateTo && (
+              <p className='text-[10px] text-emerald-500 mt-1'>
+                ✓ Date filter active: {filters.dateFrom} → {filters.dateTo}
+              </p>
+            )}
+            {filters.dateFrom && !filters.dateTo && (
+              <p className='text-[10px] text-amber-500 mt-1'>
+                Select an end date to activate date range filter
+              </p>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

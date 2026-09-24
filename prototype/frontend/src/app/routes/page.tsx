@@ -5,9 +5,6 @@ import { useRouteExplorer } from '@/hooks/use-route-explorer';
 import { RouteSearchFilter } from '@/components/routes/route-search-filter';
 import { RouteKpiSummary } from '@/components/routes/route-kpi-summary';
 import { CarrierDistributionTable } from '@/components/routes/carrier-distribution-table';
-import { RouteTrendChart } from '@/components/charts/route-trend-chart';
-import { LeadTimeChart } from '@/components/charts/lead-time-chart';
-import { CarrierComparison } from '@/components/charts/carrier-comparison';
 import { RecentFaresTable } from '@/components/tables/recent-fares-table';
 
 import { Button } from '@/components/ui/button';
@@ -23,14 +20,14 @@ const INITIAL_FILTERS = {
 };
 
 export default function RoutesPage() {
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
   const {
     filters,
     updateFilters,
     routeDetails,
     distribution,
     carrierAnalytics,
-    trends,
-    elasticity,
     recentFares,
     indexContext,
     isLoading,
@@ -40,12 +37,18 @@ export default function RoutesPage() {
   } = useRouteExplorer(INITIAL_FILTERS);
 
   const route = filters.route || 'DEL-BOM';
-  const granularity = filters.granularity || 'daily';
   const carrierList = carrierAnalytics?.carriers ?? [];
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    refetch();
+    setTimeout(() => setIsRefreshing(false), 1200);
+  };
 
   return (
     <div className='space-y-6 animate-in fade-in-50 duration-300'>
-      {/* 1. Header & Live Indicator */}
+
+      {/* 1. Header */}
       <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4'>
         <div className='space-y-1'>
           <div className='flex items-center gap-2.5 flex-wrap'>
@@ -66,7 +69,10 @@ export default function RoutesPage() {
             )}
           </div>
           <div className='flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap'>
-            <span>DGCA monitored high-frequency Indian trunk corridors</span>
+            <span>
+              Explore live fare data, carrier pricing, and market share for DGCA-monitored Indian air corridors.
+              Use the filters below to pick a route, date range, carrier, and booking horizon.
+            </span>
             {lastUpdated && (
               <>
                 <span className='hidden sm:inline text-muted-foreground/60'>•</span>
@@ -79,17 +85,16 @@ export default function RoutesPage() {
           </div>
         </div>
 
-        <div className='flex items-center gap-2'>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={refetch}
-            className='gap-1.5 text-xs h-9'
-          >
-            <RefreshCw className='h-3.5 w-3.5' />
-            Refresh Corridor
-          </Button>
-        </div>
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          className='gap-1.5 text-xs h-9 shrink-0'
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing…' : 'Refresh Corridor'}
+        </Button>
       </div>
 
       {/* 2. Route Search & Parameter Filters */}
@@ -112,65 +117,19 @@ export default function RoutesPage() {
         />
       </section>
 
-      {/* 3. Route KPI Summary (Current Fare, Historical Shift, Observations, Index Context) */}
+      {/* 3. Route KPI Summary */}
       <section aria-label='Corridor Key Metrics'>
         <RouteKpiSummary
           routeDetails={routeDetails}
           distribution={distribution}
           carrierAnalytics={carrierAnalytics}
-          trends={trends}
           indexContext={indexContext}
           isLoading={isLoading}
           selectedRoute={route}
         />
       </section>
 
-      {/* 4. Analytical Charts Grid (Fare Trends & Booking Horizon Comparison) */}
-      <section aria-label='Price Trends and Elasticity' className='space-y-4'>
-        <div className='flex items-center justify-between'>
-          <h2 className='text-base font-bold text-foreground'>
-            Fare Evolution & Booking Window Dynamics
-          </h2>
-          <span className='text-xs text-muted-foreground'>
-            FastAPI Live Time Series
-          </span>
-        </div>
-
-        <div className='grid grid-cols-1 xl:grid-cols-2 gap-6'>
-          {/* Historical Fare Trends Chart */}
-          <RouteTrendChart
-            data={trends}
-            isLoading={isLoading}
-            error={error}
-            selectedRoute={route}
-            granularity={granularity}
-            onGranularityChange={(g) => updateFilters({ granularity: g })}
-            onRetry={refetch}
-          />
-
-          {/* Advance Booking Window Elasticity Chart */}
-          <LeadTimeChart
-            data={elasticity}
-            isLoading={isLoading}
-            error={error}
-            route={route}
-            onRetry={refetch}
-          />
-        </div>
-      </section>
-
-      {/* 5. Carrier Analytics & Market Share Comparison */}
-      <section aria-label='Carrier Comparison'>
-        <CarrierComparison
-          data={carrierAnalytics}
-          isLoading={isLoading}
-          error={error}
-          route={route}
-          onRetry={refetch}
-        />
-      </section>
-
-      {/* 6. Airline Distribution Breakdown Table */}
+      {/* 4. Airline Distribution Breakdown Table */}
       <section aria-label='Carrier Distribution Table'>
         <CarrierDistributionTable
           carriers={carrierList}
@@ -179,13 +138,13 @@ export default function RoutesPage() {
         />
       </section>
 
-      {/* 7. Real-Time Raw Fare Observations Table */}
+      {/* 5. Real-Time Raw Fare Observations Table */}
       <section aria-label='Recent Observed Flights'>
         <RecentFaresTable
           data={recentFares}
           isLoading={isLoading}
           error={error}
-          onRetry={refetch}
+          onRetry={handleRefresh}
         />
       </section>
     </div>
