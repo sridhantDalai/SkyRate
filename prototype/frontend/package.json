@@ -31,10 +31,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@11.9.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "vue-demi"
-    ]
-  }
+  "packageManager": "pnpm@11.9.0"
 }
