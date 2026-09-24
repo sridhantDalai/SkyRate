@@ -246,6 +246,7 @@ export function RouteSearchFilter({
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
               Advance Booking Horizon
+              <span className='ml-1 font-normal opacity-70'>(how early the ticket was booked)</span>
             </label>
             <HorizonFilter
               value={filters.horizon}
@@ -257,6 +258,7 @@ export function RouteSearchFilter({
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
               Trend Aggregation
+              <span className='ml-1 font-normal opacity-70'>(chart grouping)</span>
             </label>
             <Select
               value={filters.granularity || 'daily'}
@@ -266,19 +268,21 @@ export function RouteSearchFilter({
                 })
               }
             >
-              <option value='daily'>Daily Grain</option>
-              <option value='weekly'>Weekly Aggregate</option>
-              <option value='monthly'>Monthly Summary</option>
+              <option value='daily'>Daily — every single day</option>
+              <option value='weekly'>Weekly — grouped by week</option>
+              <option value='monthly'>Monthly — grouped by month</option>
             </Select>
           </div>
 
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Date From (YYYY-MM-DD)
+              Date From
+              <span className='ml-1 font-normal opacity-70'>(observation start date)</span>
             </label>
             <Input
               type='date'
               value={filters.dateFrom || ''}
+              max={filters.dateTo || undefined}
               onChange={(e) => onUpdateFilters({ dateFrom: e.target.value || undefined })}
               className='text-xs h-8'
             />
@@ -286,14 +290,26 @@ export function RouteSearchFilter({
 
           <div>
             <label className='block text-[11px] font-semibold text-muted-foreground mb-1'>
-              Date To (YYYY-MM-DD)
+              Date To
+              <span className='ml-1 font-normal opacity-70'>(observation end date)</span>
             </label>
             <Input
               type='date'
               value={filters.dateTo || ''}
+              min={filters.dateFrom || undefined}
               onChange={(e) => onUpdateFilters({ dateTo: e.target.value || undefined })}
               className='text-xs h-8'
             />
+            {filters.dateFrom && filters.dateTo && (
+              <p className='text-[10px] text-emerald-500 mt-1'>
+                ✓ Date filter active: {filters.dateFrom} → {filters.dateTo}
+              </p>
+            )}
+            {filters.dateFrom && !filters.dateTo && (
+              <p className='text-[10px] text-amber-500 mt-1'>
+                Select an end date to activate date range filter
+              </p>
+            )}
           </div>
         </div>
       </CardContent>
