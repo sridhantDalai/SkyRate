@@ -158,7 +158,7 @@ app = FastAPI(
     version=settings.VERSION,
     description=API_DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
-    docs_url="/docs",
+    docs_url=None,  # Disabled to use custom dark-themed Scalar UI below
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan
@@ -258,6 +258,29 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+@app.get("/docs", include_in_schema=False)
+async def scalar_docs():
+    from fastapi.responses import HTMLResponse
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>{app.title} - API Docs</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+          body {{ margin: 0; padding: 0; background: #0f111a; }}
+        </style>
+      </head>
+      <body>
+        <!-- Scalar API Reference -->
+        <script id="api-reference" data-url="{app.openapi_url}"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+      </body>
+    </html>
+    """
+    return HTMLResponse(html)
 
 @app.get("/", tags=["Root"], include_in_schema=False)
 async def root():
