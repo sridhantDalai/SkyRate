@@ -27,11 +27,11 @@ interface LeadTimeChartProps {
   data: LeadTimeAnalysisResponse | null;
   isLoading: boolean;
   error: SkyRateApiError | null;
-  route: string;
+  route?: string;
   onRetry?: () => void;
 }
 
-export function LeadTimeChart({ data, isLoading, error, route, onRetry }: LeadTimeChartProps) {
+export function LeadTimeChart({ data, isLoading, error, route = 'All Corridors', onRetry }: LeadTimeChartProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => { setMounted(true); }, []);
 
