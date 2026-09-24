@@ -198,7 +198,7 @@ def batch_insert(sb: Client, table: str, records: list, batch_size: int = 500):
     for i in range(n):
         chunk = records[i * batch_size:(i + 1) * batch_size]
         log.info(f"  Batch {i+1}/{n}  ({len(chunk)} rows) → {table}")
-        sb.table(table).insert(chunk).execute()
+        sb.table(table).upsert(chunk, on_conflict="ID").execute()
 
 
 def table_exists(sb: Client, table: str) -> bool:
@@ -251,11 +251,14 @@ GRANT ALL ON public."{table}" TO anon, authenticated, service_role;
 
 INDEX_DDL = """
 CREATE TABLE IF NOT EXISTS public."{table}" (
-    "State"            TEXT,
-    "Time_Horizon"     TEXT,
+    "ID"               TEXT          PRIMARY KEY,
+    "State"            TEXT          NOT NULL,
+    "Time_Horizon"     TEXT          NOT NULL,
     "MoSPI_Base"       NUMERIC,
     "Basket_Inflation" TEXT,
-    "RealTime_APIx"    NUMERIC
+    "RealTime_APIx"    NUMERIC,
+    computed_at        TIMESTAMPTZ   DEFAULT NOW(),
+    UNIQUE ("State", "Time_Horizon")
 );
 GRANT ALL ON public."{table}" TO anon, authenticated, service_role;
 """
