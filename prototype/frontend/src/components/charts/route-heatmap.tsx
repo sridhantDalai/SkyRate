@@ -52,7 +52,7 @@ export function RouteHeatmap({ cells, isLoading, className }: RouteHeatmapProps)
     return (
       <EmptyState
         title='No Heatmap Data'
-        description='No route × horizon fare data available for the current partition.'
+        description='No route × horizon fare data available for the current observation period.'
       />
     );
   }

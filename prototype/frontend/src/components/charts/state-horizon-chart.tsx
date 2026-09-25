@@ -31,6 +31,7 @@ interface StateHorizonChartProps {
   isLoading: boolean;
   error: SkyRateApiError | null;
   onRetry?: () => void;
+  isHalfWidth?: boolean;
 }
 
 const HORIZON_ORDER = ['T+45', 'T+30', 'T+15', 'T+7', 'T+1'];
@@ -42,6 +43,7 @@ export function StateHorizonChart({
   isLoading,
   error,
   onRetry,
+  isHalfWidth = false,
 }: StateHorizonChartProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => {
@@ -113,43 +115,98 @@ export function StateHorizonChart({
 
   return (
     <Card className='border-border/70 overflow-hidden shadow-sm'>
-      <CardHeader className='pb-3 border-b border-border/60 bg-muted/10'>
-        <div className='flex items-start gap-2'>
-          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 mt-0.5'>
-            <TrendingUp className='h-4 w-4' />
-          </div>
-          <div className='min-w-0'>
-            <div className='flex items-center gap-2 flex-wrap'>
-              <CardTitle className='text-base font-bold text-foreground leading-snug'>
-                {activeState} — Booking Horizon Escalation Curve
-              </CardTitle>
-              <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
-                T+45 → T+1
-              </Badge>
+      {isHalfWidth ? (
+        /* Half-width optimized header: title and state selector cleanly separated into rows */
+        <CardHeader className='pb-3 border-b border-border/60 bg-muted/10'>
+          <div className='flex flex-col gap-2.5'>
+            <div className='flex items-start gap-2.5 min-w-0'>
+              <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 mt-0.5'>
+                <TrendingUp className='h-4 w-4' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='flex items-center gap-2 flex-wrap'>
+                  <CardTitle className='text-base font-bold text-foreground leading-snug'>
+                    {activeState} — Booking Horizon Escalation Curve
+                  </CardTitle>
+                  <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
+                    T+45 → T+1
+                  </Badge>
+                </div>
+                <CardDescription className='text-xs text-muted-foreground mt-0.5 leading-relaxed'>
+                  Price trends as the departure date gets closer compared to the national average
+                </CardDescription>
+              </div>
             </div>
-            <CardDescription className='text-xs text-muted-foreground mt-1 leading-relaxed'>
-              Price trends as the departure date gets closer compared to the national average
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
 
-      {/* ── State Selector ── own row, always visible */}
-      {allStates.length > 0 && onStateChange && (
-        <div className='flex items-center gap-2.5 px-4 py-2.5 border-b border-border/50 bg-background/40'>
-          <span className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0'>
-            State:
-          </span>
-          <select
-            value={activeState}
-            onChange={(e) => onStateChange(e.target.value)}
-            className='flex-1 max-w-[220px] h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary hover:border-primary/50 transition-colors cursor-pointer'
-          >
-            {allStates.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
+            {allStates.length > 0 && onStateChange && (
+              <div className='flex items-center justify-between gap-2 pt-2 border-t border-border/40'>
+                <div className='flex items-center gap-2'>
+                  <label htmlFor='state-horizon-select' className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0'>
+                    State:
+                  </label>
+                  <select
+                    id='state-horizon-select'
+                    value={activeState}
+                    onChange={(e) => onStateChange(e.target.value)}
+                    style={{ colorScheme: 'dark' }}
+                    className='w-auto min-w-[170px] max-w-[240px] h-8 rounded-lg border border-border/80 bg-card px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary hover:border-primary/50 transition-colors cursor-pointer [&>option]:bg-[#1a1e29] [&>option]:text-foreground'
+                  >
+                    {allStates.map((s) => (
+                      <option key={s} value={s} className='bg-[#1a1e29] text-foreground'>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+      ) : (
+        /* Full-width header: inline on wide viewports, wraps smoothly on smaller screens */
+        <CardHeader className='pb-3.5 border-b border-border/60 bg-muted/10'>
+          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+            <div className='flex items-start gap-2.5 min-w-0'>
+              <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 mt-0.5'>
+                <TrendingUp className='h-4 w-4' />
+              </div>
+              <div className='min-w-0'>
+                <div className='flex items-center gap-2 flex-wrap'>
+                  <CardTitle className='text-base font-bold text-foreground leading-snug'>
+                    {activeState} — Booking Horizon Escalation Curve
+                  </CardTitle>
+                  <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
+                    T+45 → T+1
+                  </Badge>
+                </div>
+                <CardDescription className='text-xs text-muted-foreground mt-0.5 leading-relaxed'>
+                  Price trends as the departure date gets closer compared to the national average
+                </CardDescription>
+              </div>
+            </div>
+
+            {allStates.length > 0 && onStateChange && (
+              <div className='flex items-center gap-2 shrink-0 w-full sm:w-auto pt-1 sm:pt-0'>
+                <label htmlFor='state-horizon-select' className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0'>
+                  State:
+                </label>
+                <select
+                  id='state-horizon-select'
+                  value={activeState}
+                  onChange={(e) => onStateChange(e.target.value)}
+                  style={{ colorScheme: 'dark' }}
+                  className='w-full sm:w-auto sm:min-w-[170px] sm:max-w-[240px] h-8 rounded-lg border border-border/80 bg-card px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary hover:border-primary/50 transition-colors cursor-pointer [&>option]:bg-[#1a1e29] [&>option]:text-foreground'
+                >
+                  {allStates.map((s) => (
+                    <option key={s} value={s} className='bg-[#1a1e29] text-foreground'>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </CardHeader>
       )}
 
       <CardContent className='pt-6'>

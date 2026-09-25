@@ -157,7 +157,7 @@ export function useRouteExplorer(initialFilters: RouteExplorerFilters) {
 
       // Check if all major endpoints returned null/error
       if (!detailsRes && !distRes && !carrierRes && !trendsRes && !elasticityRes && !faresRes) {
-        setError(new SkyRateApiError(`No operational data found on FastAPI for corridor ${activeRoute}`, 'NOT_FOUND', 404));
+        setError(new SkyRateApiError(`No operational data found for corridor ${activeRoute}`, 'NOT_FOUND', 404));
       } else {
         setError(null);
       }

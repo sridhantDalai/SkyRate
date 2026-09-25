@@ -199,14 +199,73 @@ export function formatRelativeTime(isoString: string | null | undefined): string
 
 // ─── Horizon labels ───────────────────────────────────────────────────────────
 
+/**
+ * Formats lead-time / departure horizon window into user-friendly plain English.
+ * Examples:
+ *   'T'    -> 'Today'
+ *   'T+1'  -> '1 Day Later'
+ *   'T+7'  -> '1 Week Later'
+ *   'T+15' -> '15 Days Later'
+ *   'T+30' -> '1 Month Later'
+ *   'T+45' -> '45 Days Later'
+ *   'T+60' -> '2 Months Later'
+ *   'T+90' -> '3 Months Later'
+ */
+export function formatHorizon(horizon: string | null | undefined, includeCode = false): string {
+  if (!horizon) return '—';
+  const clean = horizon.trim().toUpperCase();
+  let label = clean;
+
+  switch (clean) {
+    case 'T':
+    case 'T+0':
+    case 'T-0':
+      label = 'Today';
+      break;
+    case 'T+1':
+      label = '1 Day Later';
+      break;
+    case 'T+7':
+      label = '1 Week Later';
+      break;
+    case 'T+15':
+      label = '15 Days Later';
+      break;
+    case 'T+30':
+      label = '1 Month Later';
+      break;
+    case 'T+45':
+      label = '45 Days Later';
+      break;
+    case 'T+60':
+      label = '2 Months Later';
+      break;
+    case 'T+90':
+      label = '3 Months Later';
+      break;
+    default:
+      if (clean.startsWith('T+')) {
+        const days = clean.slice(2);
+        label = `${days} Days Later`;
+      }
+      break;
+  }
+
+  if (includeCode && clean.startsWith('T')) {
+    return `${label} (${clean})`;
+  }
+  return label;
+}
+
 export function formatHorizonLabel(horizon: string | null | undefined): string {
   switch (horizon?.toUpperCase()) {
-    case 'T':   return 'T (Same Day)';
-    case 'T+1': return 'T+1 (1 Day Prior)';
-    case 'T+7': return 'T+7 (1 Week Prior)';
-    case 'T+15': return 'T+15 (2 Weeks Prior)';
-    case 'T+30': return 'T+30 (1 Month Prior)';
-    case 'T+45': return 'T+45 (45 Days Prior)';
+    case 'T':   return 'Today (T)';
+    case 'T+1': return '1 Day Later (T+1)';
+    case 'T+7': return '1 Week Later (T+7)';
+    case 'T+15': return '15 Days Later (T+15)';
+    case 'T+30': return '1 Month Later (T+30)';
+    case 'T+45': return '45 Days Later (T+45)';
     default: return horizon ?? '—';
   }
 }
+

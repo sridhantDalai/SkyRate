@@ -31,6 +31,7 @@ interface StateIndexComparisonChartProps {
   selectedHorizon?: string;
   onHorizonChange?: (horizon: string) => void;
   onRetry?: () => void;
+  isHalfWidth?: boolean;
 }
 
 export function StateIndexComparisonChart({
@@ -40,6 +41,7 @@ export function StateIndexComparisonChart({
   selectedHorizon = 'T',
   onHorizonChange,
   onRetry,
+  isHalfWidth = false,
 }: StateIndexComparisonChartProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => {
@@ -115,48 +117,104 @@ export function StateIndexComparisonChart({
 
   return (
     <Card className='border-border/70 overflow-hidden shadow-sm'>
-      <CardHeader className='pb-3 border-b border-border/60 bg-muted/10'>
-        <div className='flex items-start gap-2'>
-          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5'>
-            <BarChart3 className='h-4 w-4' />
-          </div>
-          <div className='min-w-0'>
-            <div className='flex items-center gap-2 flex-wrap'>
-              <CardTitle className='text-base font-bold text-foreground leading-snug'>
-                State-Wise Airfare Price Index vs MoSPI CPI Baseline
-              </CardTitle>
-              <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
-                {effectiveHorizon}
-              </Badge>
+      {isHalfWidth ? (
+        /* Half-width optimized header: title and horizon selector cleanly separated into rows */
+        <CardHeader className='pb-3 border-b border-border/60 bg-muted/10'>
+          <div className='flex flex-col gap-2.5'>
+            <div className='flex items-start gap-2.5 min-w-0'>
+              <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5'>
+                <BarChart3 className='h-4 w-4' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className='flex items-center gap-2 flex-wrap'>
+                  <CardTitle className='text-base font-bold text-foreground leading-snug'>
+                    State-Wise Airfare Price Index vs MoSPI CPI Baseline
+                  </CardTitle>
+                  <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
+                    {effectiveHorizon}
+                  </Badge>
+                </div>
+                <CardDescription className='text-xs text-muted-foreground mt-0.5 leading-relaxed'>
+                  Direct comparison of RealTime APIx vs state-level MoSPI CPI baseline
+                </CardDescription>
+              </div>
             </div>
-            <CardDescription className='text-xs text-muted-foreground mt-1 leading-relaxed'>
-              Direct comparison of RealTime APIx vs state-level MoSPI CPI baseline
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
 
-      {/* ── Horizon Selector ── always visible, wraps on narrow screens */}
-      {availableHorizons.length > 1 && onHorizonChange && (
-        <div className='flex items-center gap-1.5 flex-wrap px-4 py-2.5 border-b border-border/50 bg-background/40'>
-          <span className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mr-1 shrink-0'>
-            Horizon:
-          </span>
-          {availableHorizons.map((h) => (
-            <button
-              key={h}
-              type='button'
-              onClick={() => onHorizonChange(h)}
-              className={`text-[11px] px-3 py-1 rounded-full font-mono font-semibold transition-all duration-150 shrink-0
-                ${ effectiveHorizon === h
-                  ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
-                  : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/70 hover:border-border'
-                }`}
-            >
-              {h}
-            </button>
-          ))}
-        </div>
+            {availableHorizons.length > 1 && onHorizonChange && (
+              <div className='flex items-center justify-between gap-2 pt-2 border-t border-border/40'>
+                <div className='flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full'>
+                  <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1 shrink-0'>
+                    Horizon:
+                  </span>
+                  <div className='flex items-center gap-1 shrink-0 flex-nowrap'>
+                    {availableHorizons.map((h) => (
+                      <button
+                        key={h}
+                        type='button'
+                        onClick={() => onHorizonChange(h)}
+                        className={`text-[11px] px-2.5 py-1 rounded-full font-mono font-semibold transition-all duration-150 shrink-0 cursor-pointer ${
+                          effectiveHorizon === h
+                            ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
+                            : 'bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/70 hover:border-border'
+                        }`}
+                      >
+                        {h}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+      ) : (
+        /* Full-width header: inline on wide viewports, wraps smoothly on smaller screens */
+        <CardHeader className='pb-3.5 border-b border-border/60 bg-muted/10'>
+          <div className='flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3'>
+            <div className='flex items-start gap-2.5 min-w-0'>
+              <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5'>
+                <BarChart3 className='h-4 w-4' />
+              </div>
+              <div className='min-w-0'>
+                <div className='flex items-center gap-2 flex-wrap'>
+                  <CardTitle className='text-base font-bold text-foreground leading-snug'>
+                    State-Wise Airfare Price Index vs MoSPI CPI Baseline
+                  </CardTitle>
+                  <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
+                    {effectiveHorizon}
+                  </Badge>
+                </div>
+                <CardDescription className='text-xs text-muted-foreground mt-0.5 leading-relaxed'>
+                  Direct comparison of RealTime APIx vs state-level MoSPI CPI baseline
+                </CardDescription>
+              </div>
+            </div>
+
+            {availableHorizons.length > 1 && onHorizonChange && (
+              <div className='flex items-center gap-1.5 shrink-0 pt-1 2xl:pt-0 overflow-x-auto no-scrollbar'>
+                <span className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-0.5 shrink-0'>
+                  Horizon:
+                </span>
+                <div className='flex items-center gap-1 shrink-0 flex-nowrap'>
+                  {availableHorizons.map((h) => (
+                    <button
+                      key={h}
+                      type='button'
+                      onClick={() => onHorizonChange(h)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full font-mono font-semibold transition-all duration-150 shrink-0 cursor-pointer ${
+                        effectiveHorizon === h
+                          ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
+                          : 'bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/70 hover:border-border'
+                      }`}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
       )}
 
       <CardContent className='pt-6'>

@@ -30,7 +30,7 @@ export function CarrierDistributionTable({
     return (
       <EmptyState
         title='No Carrier Distribution Available'
-        description={`FastAPI returned no carrier data for corridor ${selectedRoute}.`}
+        description={`No operating carrier observations recorded for corridor ${selectedRoute} in the current surveillance window.`}
       />
     );
   }

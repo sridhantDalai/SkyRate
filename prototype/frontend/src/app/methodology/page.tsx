@@ -161,7 +161,7 @@ export default function MethodologyPage() {
             <div className='p-3 rounded-xl border border-primary/25 bg-primary/5 space-y-1'>
               <span className='font-bold text-primary text-[10px] uppercase tracking-wide block'>SkyRate Solution</span>
               <p className='text-foreground font-semibold'>Real-Time APIx Index</p>
-              <p className='text-muted-foreground text-[10px]'>Daily partition snapshots with state-wise econometrics.</p>
+              <p className='text-muted-foreground text-[10px]'>Daily observation snapshots with state-wise econometrics.</p>
             </div>
           </div>
         </Prose>
@@ -175,11 +175,11 @@ export default function MethodologyPage() {
         <Prose>
           <p>
             Each observation job targets high-density domestic corridors across predefined lead-time windows.
-            Collected records are stored in date-partitioned PostgreSQL tables inside Supabase:
+            Collected records are stored in structured daily PostgreSQL tables inside Supabase:
           </p>
           <div className='rounded-xl bg-black/40 border border-border/60 p-4 text-xs font-mono space-y-2 overflow-x-auto'>
-            <div className='text-muted-foreground'>-- Scraped fare observations</div>
-            <div><span className='text-emerald-400'>scraped_on</span>_DD_MM_YYYY
+            <div className='text-muted-foreground'>-- Observed fare records</div>
+            <div><span className='text-emerald-400'>flight_fares</span>_DD_MM_YYYY
               <span className='text-muted-foreground ml-2'>(ID, route, carrier, flight_number, is_non_stop,</span></div>
             <div className='ml-24 text-muted-foreground'>t_window, base_fare, taxes, udf_fee, gross_fare, status, source)</div>
             <div className='pt-2 text-muted-foreground'>-- Computed state-wise APIx indices</div>
@@ -216,7 +216,7 @@ export default function MethodologyPage() {
       <section className='space-y-4'>
         <SectionHeading id='horizons' n='4' icon={<Clock className='h-4 w-4'/>}
           title='Lead-Time Booking Horizons'
-          sub='Six canonical advance-purchase windows (t_window field in scraped_on schema)' />
+          sub='Six canonical advance-purchase windows across monitored itineraries' />
         <Prose>
           <p>
             Because dynamic pricing escalates as seats thin near departure, SkyRate captures
@@ -444,7 +444,7 @@ export default function MethodologyPage() {
             { symbol: 'MoSPI_Base',    name: 'State CPI Reference',   unit: 'pts', description: 'Official state-level MoSPI Consumer Price Index baseline.' },
             { symbol: 'Basket_Inflation', name: 'Inflation Divergence', unit: '%', description: 'Net percentage deviation above the official transport baseline.' },
           ]}
-          description='Stored as "Basket_Inflation" in the index_for partition table. Positive values indicate airfare inflation above official CPI benchmarks; negative values indicate deflation.'
+          description='Calculated as "Basket_Inflation" in the state index dataset. Positive values indicate airfare inflation above official CPI benchmarks; negative values indicate deflation.'
         >
           <div className='flex items-center justify-center gap-3 flex-wrap text-xl sm:text-2xl leading-loose'>
             <span className='font-math italic text-foreground font-semibold'>Basket Inflation</span>
@@ -468,12 +468,12 @@ export default function MethodologyPage() {
         },
         {
           id: 'freshness', n: '12', icon: <Calendar className='h-4 w-4'/>,
-          title: 'Data Freshness & Partition Lifecycle',
-          sub: 'Immutable daily partitions, vintage metadata, and in-memory TTL caching',
+          title: 'Data Freshness & Update Lifecycle',
+          sub: 'Immutable daily observation snapshots, vintage metadata, and in-memory TTL caching',
           body: (
             <ul className='space-y-1.5 list-disc pl-5 text-xs'>
-              <li><strong className='text-foreground'>Dynamic Partition Discovery</strong> — backend probes Supabase for active scraped_on_DD_MM_YYYY and index_for_DD_MM_YYYY tables, looking back up to 7 days.</li>
-              <li><strong className='text-foreground'>Calculation Vintage</strong> — every API response includes partition_date and calculation_date for full auditability.</li>
+              <li><strong className='text-foreground'>Automated Date Discovery</strong> — backend probes data store for active observation tables, looking back up to 7 days.</li>
+              <li><strong className='text-foreground'>Calculation Vintage</strong> — every API response includes observation date and calculation timestamp for full auditability.</li>
               <li><strong className='text-foreground'>TTL Cache</strong> — FastAPI in-memory caches (300 s overview, 600 s topology) protect Supabase connection limits.</li>
             </ul>
           ),
@@ -506,7 +506,7 @@ export default function MethodologyPage() {
               {[
                 ['Tier 1 — Next.js', 'Server-side rendered dashboard. Communicates strictly via FastAPI.'],
                 ['Tier 2 — FastAPI', 'Pydantic validation, input sanitisation, rate limiting, TTL caching.'],
-                ['Tier 3 — Supabase', 'PostgreSQL partitions queried via service-role key; RLS enforced.'],
+                ['Tier 3 — Supabase', 'PostgreSQL database queried via service-role key; RLS enforced.'],
               ].map(([t, d]) => (
                 <div key={t as string} className='p-3 rounded-xl border border-primary/20 bg-card space-y-1'>
                   <span className='font-bold text-primary text-xs block'>{t}</span>
@@ -524,7 +524,7 @@ export default function MethodologyPage() {
             <ul className='space-y-1.5 list-disc pl-5 text-xs'>
               <li><strong className='text-foreground'>Ancillary Fees Excluded</strong> — seat selection, baggage, meals excluded per DGCA unbundled pricing rules.</li>
               <li><strong className='text-foreground'>Economy Class Only</strong> — business class excluded to prevent luxury premiums from skewing CPI metrics.</li>
-              <li><strong className='text-foreground'>Snapshot Ingestion</strong> — flash sales under 30 min between collection windows may lag by one partition cycle.</li>
+              <li><strong className='text-foreground'>Snapshot Ingestion</strong> — flash sales under 30 min between collection windows may lag by one collection cycle.</li>
             </ul>
           ),
         },

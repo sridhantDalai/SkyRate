@@ -73,7 +73,7 @@ export function IndexKpiBanner({ overview, indexOverview, isLoading }: IndexKpiB
       <Card className='border-border/70 p-4'>
         <div className='flex items-center justify-between'>
           <span className='text-[11px] font-bold text-muted-foreground uppercase tracking-wider'>
-            Partition % Change
+            Index % Change
           </span>
           <Percent className='h-4 w-4 text-primary' />
         </div>
