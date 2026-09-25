@@ -220,11 +220,15 @@ def validate_df(df) -> pd.DataFrame | None:
 
 
 def batch_insert(sb: Client, table: str, records: list, batch_size: int = 500):
+    # Plain INSERT — both scraped and index tables are fully cleared before
+    # every insert, so ON CONFLICT / upsert is unnecessary.
+    # upsert(on_conflict="ID") was also broken for scraped tables since they
+    # have no UNIQUE constraint on ID (error 42P10).
     n = math.ceil(len(records) / batch_size)
     for i in range(n):
         chunk = records[i * batch_size:(i + 1) * batch_size]
         log.info(f"  Batch {i+1}/{n}  ({len(chunk)} rows) → {table}")
-        sb.table(table).upsert(chunk, on_conflict="ID").execute()
+        sb.table(table).insert(chunk).execute()
 
 
 def table_exists(sb: Client, table: str) -> bool:
