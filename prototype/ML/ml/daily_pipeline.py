@@ -84,9 +84,35 @@ def get_supabase() -> Client:
 
 
 def get_db_url() -> str | None:
-    """Return SUPABASE_DB_URL if set, else None."""
+    """Return the best available DB URL for DDL (psycopg2) operations.
+
+    Priority order:
+      1. SUPABASE_DB_POOLER_URL  — Session Pooler (IPv4, works on GitHub Actions)
+      2. SUPABASE_DB_URL         — Direct DB connection (IPv6 on most Supabase regions,
+                                   FAILS on GitHub Actions with 'Network is unreachable')
+
+    Always set SUPABASE_DB_POOLER_URL in CI/CD environments.
+    Get it from: Supabase Dashboard → Settings → Database → Connection Pooling
+                 → Session mode → URI  (port 5432 on pooler host, NOT db.*.supabase.co)
+    """
     load_dotenv(ENV_FILE)
-    return os.environ.get("SUPABASE_DB_URL") or None
+    pooler = os.environ.get("SUPABASE_DB_POOLER_URL") or None
+    direct = os.environ.get("SUPABASE_DB_URL") or None
+
+    if pooler:
+        return pooler
+    if direct:
+        # Direct connection uses IPv6 on Supabase — unreachable from GitHub Actions runners.
+        if "db." in direct and ".supabase.co" in direct:
+            log.warning(
+                "SUPABASE_DB_URL is a DIRECT connection URL (db.*.supabase.co:5432). "
+                "Direct connections use IPv6 and WILL FAIL on GitHub Actions. "
+                "Add SUPABASE_DB_POOLER_URL (Session Pooler URI) to fix this. "
+                "Find it: Supabase Dashboard → Settings → Database → "
+                "Connection Pooling → Session mode → URI"
+            )
+        return direct
+    return None
 
 
 def date_suffix(dt: datetime = None) -> str:
@@ -340,18 +366,27 @@ def ensure_table(sb: Client, table: str, ddl_template: str) -> bool:
     ok  = run_ddl_psycopg2(sql)
 
     if not ok:
+        _db_url_set = bool(get_db_url())
         print("\n" + "!" * 60)
         print("TABLE CREATION FAILED")
         print("!" * 60)
         print(f"\nThe table '{table}' does not exist.")
-        print("SUPABASE_DB_URL is not set in your .env file.")
-        print("\nPlease run this SQL once in your Supabase SQL Editor:")
+        if _db_url_set:
+            print("\nA DB URL IS set but psycopg2 connection FAILED.")
+            print("Root cause: SUPABASE_DB_URL likely points to the DIRECT DB host")
+            print("  (db.*.supabase.co:5432) which resolves to IPv6 and is BLOCKED on GitHub Actions.")
+            print("")
+            print("FIX — add SUPABASE_DB_POOLER_URL (Session Pooler URL) to GitHub Secrets:")
+            print("  Supabase Dashboard → Settings → Database → Connection Pooling")
+            print("  → Session mode → URI")
+            print("  Format: postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres")
+        else:
+            print("\nNeither SUPABASE_DB_POOLER_URL nor SUPABASE_DB_URL is set.")
+            print("Add SUPABASE_DB_POOLER_URL (Session Pooler URI) to your .env / GitHub Secrets.")
+        print("\nAlternatively, run this SQL once manually in your Supabase SQL Editor:")
         print("-" * 60)
         print(sql)
         print("-" * 60)
-        print("\nOR add SUPABASE_DB_URL to your .env file:")
-        print("  SUPABASE_DB_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres")
-        print("  (Find it in: Supabase Dashboard → Project Settings → Database → Connection String → URI)")
         print("!" * 60 + "\n")
         return False
 
@@ -485,6 +520,11 @@ def run_pipeline():
         log.error(f"Supabase unavailable: {e}")
         return
 
+    # ── Drop ALL old scraped_on_* tables before creating today's ────────────
+    # Only the current day's scraped table is needed. This runs FIRST so that
+    # if table creation fails, we haven't already wiped data unnecessarily.
+    drop_old_scraped_tables(s_table)
+
     # Ensure today's scraped table exists
     if not ensure_table(sb, s_table, SCRAPED_DDL):
         log.error(f"Cannot proceed — table {s_table} is not ready.")
@@ -599,6 +639,20 @@ def run_pipeline():
     if not ensure_table(sb, i_table, INDEX_DDL):
         log.error(f"Cannot proceed — index table {i_table} is not ready.")
         return
+
+    # ── Clear index table before insert (no stale/duplicate rows ever) ──────────
+    # Guarantees only freshest calculation results live in the table.
+    # Same-day re-runs: IDs are identical (sha256 of date|state|t_window)
+    # so clearing first is the only way to ensure zero old rows survive.
+    existing_idx = count_rows(sb, i_table)
+    if existing_idx > 0:
+        log.info(f"Clearing {existing_idx} stale row(s) from {i_table} before fresh insert ...")
+        try:
+            sb.table(i_table).delete().neq("State", "__SKYRATE_NEVER_MATCH__").execute()
+            log.info(f"Index table {i_table} cleared. Inserting {len(index_data)} fresh rows.")
+        except Exception as e:
+            log.error(f"Could not clear {i_table}: {e}")
+            return
 
     # ── Upload index data ─────────────────────────────────────
     index_ok = upload_and_verify(sb, i_table, index_data, "INDEX DATA")

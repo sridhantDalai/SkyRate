@@ -38,6 +38,10 @@ jobs:
       SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY:       ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_DB_URL:           ${{ secrets.SUPABASE_DB_URL }}
+      # Session Pooler URL — IPv4, reachable from GitHub Actions runners.
+      # Direct DB URL (SUPABASE_DB_URL) uses IPv6 and will fail on GitHub Actions.
+      # Get from: Supabase Dashboard → Settings → Database → Connection Pooling → Session mode → URI
+      SUPABASE_DB_POOLER_URL:    ${{ secrets.SUPABASE_DB_POOLER_URL }}
       SUPABASE_PUBLISHABLE_KEY:  ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
@@ -84,15 +88,23 @@ jobs:
         run: |
           missing=0
           if [ -z "$SUPABASE_URL" ]; then
-            echo "::error::Secret SUPABASE_URL is not set. Add it in Repository ? Settings ? Secrets."
+            echo "::error::Secret SUPABASE_URL is not set. Add it in Repository Settings > Secrets."
             missing=1
           fi
           if [ -z "$SUPABASE_SECRET_KEY" ]; then
             echo "::error::Secret SUPABASE_SECRET_KEY is not set."
             missing=1
           fi
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::warning::Secret SUPABASE_DB_URL is not set. Automatic table creation will be disabled; tables must exist already."
+          # SUPABASE_DB_POOLER_URL is required for table auto-creation on GitHub Actions.
+          # SUPABASE_DB_URL (direct PostgreSQL on db.*.supabase.co:5432) resolves to IPv6
+          # on Supabase infrastructure and is unreachable from GitHub Actions runners ---
+          # it causes 'Network is unreachable' and the pipeline cannot create tables.
+          if [ -z "$SUPABASE_DB_POOLER_URL" ] && [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Neither SUPABASE_DB_POOLER_URL nor SUPABASE_DB_URL is set. Table auto-creation will FAIL and the pipeline will stop immediately."
+            missing=1
+          fi
+          if [ -n "$SUPABASE_DB_URL" ] && [ -z "$SUPABASE_DB_POOLER_URL" ]; then
+            echo "::warning::SUPABASE_DB_POOLER_URL is NOT set. SUPABASE_DB_URL is a direct connection (IPv6) that WILL FAIL on GitHub Actions runners. Add SUPABASE_DB_POOLER_URL in Repository Settings > Secrets. Get the Session Pooler URI from: Supabase Dashboard > Settings > Database > Connection Pooling > Session mode > URI"
           fi
           if [ "$missing" -eq 1 ]; then
             exit 1
