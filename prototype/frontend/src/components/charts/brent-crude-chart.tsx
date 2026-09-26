@@ -28,10 +28,12 @@ interface BrentCrudeChartProps {
   onRetry?: () => void;
 }
 
-const formatUSD = (val: number) => {
-  return new Intl.NumberFormat('en-US', {
+const USD_TO_INR = 83.50;
+
+const formatINR = (val: number) => {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(val);
@@ -66,7 +68,11 @@ export function BrentCrudeChart({ data, isLoading, error, onRetry }: BrentCrudeC
     );
   }
 
-  const allValues = records.map((r) => r.brent_crude_usd);
+  const chartData = records.map(r => ({
+    ...r,
+    brent_crude_inr: r.brent_crude_usd * USD_TO_INR
+  }));
+  const allValues = chartData.map((r) => r.brent_crude_inr);
   const [yMin, yMax] = calcYDomain(allValues);
 
   return (
@@ -76,13 +82,13 @@ export function BrentCrudeChart({ data, isLoading, error, onRetry }: BrentCrudeC
           Brent Crude Oil (Macro Trend)
         </CardTitle>
         <CardDescription className='text-xs'>
-          Global benchmark pricing (USD/bbl) impacting Aviation Turbine Fuel (ATF)
+          Global benchmark pricing (INR/bbl) impacting Aviation Turbine Fuel (ATF)
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className='h-[300px] w-full' role='img' aria-label='Brent Crude Oil Price Chart'>
           <ResponsiveContainer width='100%' height='100%'>
-            <AreaChart data={records} margin={{ top: 10, right: 12, left: 4, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 4, bottom: 0 }}>
               <defs>
                 <linearGradient id='oilBandFill' x1='0' y1='0' x2='0' y2='1'>
                   <stop offset='5%' stopColor='#f59e0b' stopOpacity={0.25} />
@@ -102,7 +108,7 @@ export function BrentCrudeChart({ data, isLoading, error, onRetry }: BrentCrudeC
                 axisLine={false}
                 tick={AXIS_TICK_STYLE}
                 className='text-muted-foreground'
-                tickFormatter={(val) => `$${val}`}
+                tickFormatter={(val) => `₹${val}`}
                 domain={[yMin, yMax]}
               />
               <Tooltip
@@ -113,7 +119,7 @@ export function BrentCrudeChart({ data, isLoading, error, onRetry }: BrentCrudeC
                     <div style={TOOLTIP_STYLE} role='tooltip'>
                       <p className='font-bold text-foreground mb-1'>{label}</p>
                       <p className='text-amber-500'>
-                        Price: <span className='font-bold text-foreground'>{formatUSD(d.brent_crude_usd)}</span>
+                        Price: <span className='font-bold text-foreground'>{formatINR(d.brent_crude_inr)}</span>
                       </p>
                     </div>
                   );
@@ -121,8 +127,8 @@ export function BrentCrudeChart({ data, isLoading, error, onRetry }: BrentCrudeC
               />
               <Area
                 type='monotone'
-                dataKey='brent_crude_usd'
-                name='Brent Crude (USD)'
+                dataKey='brent_crude_inr'
+                name='Brent Crude (INR)'
                 stroke='#f59e0b'
                 strokeWidth={2.5}
                 fill='url(#oilBandFill)'
