@@ -32,7 +32,7 @@ class AnalyticsService:
         )
 
         # 3. Macro indicators
-        oil_data = SupabaseManager.load_fallback_macro_oil()
+        oil_data = SupabaseManager.get_macro_oil()
         latest_oil = float(oil_data[-1]["brent_crude_usd"]) if oil_data else 74.85
 
         # 4. Resolve observation date to canonical ISO YYYY-MM-DD
@@ -360,7 +360,7 @@ class AnalyticsService:
 
     @staticmethod
     async def get_macro_indicators() -> MacroAnalyticsResponse:
-        oil_data = SupabaseManager.load_fallback_macro_oil()
+        oil_data = SupabaseManager.get_macro_oil()
         records = [OilIndicatorRecord(date=r["date"], brent_crude_usd=float(r["brent_crude_usd"])) for r in oil_data]
         latest_price = records[-1].brent_crude_usd if records else 74.85
 

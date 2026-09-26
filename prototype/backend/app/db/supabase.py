@@ -175,6 +175,19 @@ class SupabaseManager:
         ]
 
     @classmethod
+    def get_macro_oil(cls) -> List[Dict[str, Any]]:
+        client = cls.get_client()
+        if client:
+            try:
+                res = client.table("macro_oil").select("*").execute()
+                if res.data:
+                    return sorted(res.data, key=lambda x: x["date"])
+            except Exception as e:
+                logger.warning(f"Failed to fetch macro oil from Supabase: {e}. Using fallback.")
+        
+        return cls.load_fallback_macro_oil()
+
+    @classmethod
     def load_fallback_macro_oil(cls) -> List[Dict[str, Any]]:
         """Fallback to macro_indicators_db.json in ML directory."""
         json_path = settings.ML_DIR / "macro_indicators_db.json"

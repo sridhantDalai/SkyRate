@@ -5,24 +5,97 @@ from datetime import datetime as _dt
 
 
 
+import os
+import logging
+from pathlib import Path
+from dotenv import load_dotenv
+
+logger = logging.getLogger("index_calculator")
+
+_base_dir = Path(__file__).parent
+load_dotenv(_base_dir / ".env")
+
 # =========================================================================
-# STEP 1: FETCH OFFICIAL BASELINES FROM MOSPI (SWAGGER API INTEGRATION)
+# STEP 1: FETCH OFFICIAL BASELINES FROM SUPABASE / MOSPI
 # =========================================================================
-# In production, this function makes a live GET request to the MoSPI Swagger API
-# Endpoint: GET /api/cpi/getCPIData
-# We load the official MoSPI CPI database once to save time during loops
-print("Loading official MoSPI CPI database (cpi_713.xlsx)...")
-mospi_df = pd.read_excel('cpi_713.xlsx')
+# Dynamic loader: fetches DGCA / MoSPI baseline dataset from Supabase
+# with automatic fallback to cpi_713.xlsx on failure, timeout, or missing fields.
+
+def load_dgca_cpi_data(sb_client=None):
+    """
+    Attempts to dynamically fetch the official DGCA / MoSPI baseline dataset from Supabase (dgca_weights).
+    Validates that the response is non-empty and contains required fields ('state', 'sector', 'index').
+    If Supabase succeeds, returns the database records as a DataFrame.
+    If Supabase fails, times out, returns empty data, or has missing/invalid fields:
+      - Logs a warning
+      - Automatically falls back to the existing cpi_713.xlsx Excel dataset
+    """
+    required_fields = {'state', 'sector', 'index'}
+
+    # 1. Try to fetch from Supabase
+    try:
+        sb = sb_client
+        if sb is None:
+            url = os.environ.get("SUPABASE_URL")
+            key = os.environ.get("SUPABASE_SECRET_KEY")
+            if url and key:
+                from supabase import create_client
+                sb = create_client(url, key)
+
+        if sb is not None:
+            all_rows = []
+            offset = 0
+            BATCH = 1000
+            table_name = os.environ.get("DGCA_WEIGHTS_TABLE", "dgca_weights")
+            while True:
+                res = sb.table(table_name).select("*").range(offset, offset + BATCH - 1).execute()
+                batch = res.data or []
+                all_rows.extend(batch)
+                if len(batch) < BATCH:
+                    break
+                offset += BATCH
+
+            # 2. Validate non-empty response
+            if not all_rows:
+                raise ValueError("dgca_weights table returned 0 rows or empty response.")
+
+            # 2. Validate required fields
+            present_fields = set(all_rows[0].keys())
+            missing_fields = required_fields - present_fields
+            if missing_fields:
+                raise ValueError(f"Missing required fields in Supabase dgca_weights: {missing_fields}")
+
+            df = pd.DataFrame(all_rows)
+            df['index'] = pd.to_numeric(df['index'], errors='coerce')
+            if df['index'].isna().all():
+                raise ValueError("All 'index' values in Supabase dgca_weights are NaN/invalid.")
+
+            print(f"Successfully loaded {len(df)} DGCA baseline records dynamically from Supabase (dgca_weights).")
+            return df
+        else:
+            raise ValueError("SUPABASE_URL or SUPABASE_SECRET_KEY not configured.")
+    except Exception as e:
+        # 4. Log warning on failure/timeout/empty/missing fields
+        warn_msg = f"Failed to fetch DGCA dataset from Supabase: {e}. Falling back to cpi_713.xlsx."
+        logger.warning(warn_msg)
+        print(f"WARNING: {warn_msg}")
+
+    # 5. Fallback to existing Excel file
+    excel_path = _base_dir / "cpi_713.xlsx" if (_base_dir / "cpi_713.xlsx").exists() else Path("cpi_713.xlsx")
+    print(f"Loading official MoSPI CPI database fallback ({excel_path})...")
+    return pd.read_excel(excel_path)
+
+mospi_df = load_dgca_cpi_data()
 
 def fetch_mospi_state_baseline(state_name):
     """
-    Reads the official historical CPI for 'Airfare' 
+    Reads the official historical CPI for 'Airfare'
     specifically for the requested state directly from the MoSPI Excel file.
     """
     try:
         # Filter the MoSPI data for the specific state and 'Combined' sector
         state_data = mospi_df[(mospi_df['state'] == state_name) & (mospi_df['sector'] == 'Combined')]
-        
+
         if not state_data.empty:
             return float(state_data['index'].iloc[0])
         else:
@@ -33,7 +106,7 @@ def fetch_mospi_state_baseline(state_name):
         return 100.0 # Ultimate fallback
 
 # We map each route to a "State" to match MoSPI's state-wise filtering.
-# CPI inflation is felt by the consumer purchasing the ticket, 
+# CPI inflation is felt by the consumer purchasing the ticket,
 # so we map the route to the ORIGIN state (where the consumer lives/departs).
 STATE_MAPPING = {
     "DEL-BOM": "Delhi",
@@ -74,7 +147,7 @@ DGCA_TRAFFIC = {
     "BOM-JAI": {"Q0": 170000, "Qt": 180000}
 }
 
-# Simulated 2024 Average Prices ($P_0$) 
+# Simulated 2024 Average Prices ($P_0$)
 # (I adjusted these to be closer to your actual scraped data so inflation looks realistic!)
 BASE_PRICES_2024 = {
     "DEL-BOM": 9500,
@@ -102,7 +175,7 @@ def run_anomaly_detection(df):
     """
     print("\n--- Running Anomaly Detection ---")
     clean_df = df.dropna(subset=['gross_fare']).copy()
-    
+
     try:
         from sklearn.ensemble import IsolationForest
         print("Using Machine Learning: Isolation Forest...")
@@ -110,7 +183,7 @@ def run_anomaly_detection(df):
         clean_df['anomaly_score'] = iso_forest.fit_predict(clean_df[['gross_fare']])
         anomalies = clean_df[clean_df['anomaly_score'] == -1]
         normal_data = clean_df[clean_df['anomaly_score'] == 1]
-        
+
     except ImportError:
         print("Scikit-learn not found. Falling back to Statistical IQR method...")
         # IQR method for anomaly detection
@@ -119,7 +192,7 @@ def run_anomaly_detection(df):
         IQR = Q3 - Q1
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
-        
+
         anomalies = clean_df[(clean_df['gross_fare'] < lower_bound) | (clean_df['gross_fare'] > upper_bound)]
         normal_data = clean_df[(clean_df['gross_fare'] >= lower_bound) & (clean_df['gross_fare'] <= upper_bound)]
 
@@ -133,59 +206,59 @@ def calculate_fisher_index(df):
     We use the median() price to prevent premium tickets from skewing the index.
     """
     print("\n--- Calculating Fisher Ideal Index (APIx) ---")
-    
+
     # First, map all rows to their Origin State
     df['state'] = df['route'].map(STATE_MAPPING)
-    
+
     # Drop rows where state is unknown or route isn't in our base database
     df = df[df['state'].notna()]
     df = df[df['route'].isin(BASE_PRICES_2024.keys())]
-    
+
     results = []
-    
+
     # We aggregate by State and Time Horizon
     state_groups = df.groupby(['state', 't_window'])
-    
+
     for (state, t_window), group in state_groups:
-        
+
         sum_pt_q0 = 0
         sum_p0_q0 = 0
         sum_pt_qt = 0
         sum_p0_qt = 0
-        
+
         # Calculate the basket sum across all routes within this State
         route_subgroups = group.groupby('route')
-        
+
         for route, route_data in route_subgroups:
             # Using MEDIAN instead of MEAN to resist extreme price skew!
             P_t = route_data['gross_fare'].median()
-            
+
             P_0 = BASE_PRICES_2024[route]
             Q_0 = DGCA_TRAFFIC[route]["Q0"]
             Q_t = DGCA_TRAFFIC[route]["Qt"]
-            
+
             # Aggregate the numerator and denominators for the state basket
             sum_pt_q0 += (P_t * Q_0)
             sum_p0_q0 += (P_0 * Q_0)
             sum_pt_qt += (P_t * Q_t)
             sum_p0_qt += (P_0 * Q_t)
-            
+
         if sum_p0_q0 == 0 or sum_p0_qt == 0:
             continue
-            
+
         # 1. Laspeyres Index (Base Weighting)
         laspeyres = sum_pt_q0 / sum_p0_q0
-        
+
         # 2. Paasche Index (Current Weighting)
         paasche = sum_pt_qt / sum_p0_qt
-        
+
         # 3. Fisher Ideal Index (Geometric Mean)
         fisher = np.sqrt(laspeyres * paasche)
-        
+
         # 4. Augment with MoSPI Baseline via Excel File
         state_baseline = fetch_mospi_state_baseline(state)
         augmented_apix = state_baseline * fisher
-        
+
         _row_date = _dt.now().strftime("%d_%m_%Y")
         _row_id   = hashlib.sha256(f"{_row_date}|{state}|{t_window}".encode()).hexdigest()[:8].upper()
         results.append({
@@ -196,33 +269,33 @@ def calculate_fisher_index(df):
             "Basket_Inflation": f"{round((fisher - 1) * 100, 2)}%",
             "RealTime_APIx": round(augmented_apix, 2)
         })
-        
+
     # --- 5. CALCULATE THE "ALL INDIA" MASTER INDEX ---
     # The judges will want to see the national inflation, not just state-by-state!
     national_groups = df.groupby('t_window')
-    
+
     for t_window, group in national_groups:
         sum_pt_q0 = sum_p0_q0 = sum_pt_qt = sum_p0_qt = 0
-        
+
         route_subgroups = group.groupby('route')
         for route, route_data in route_subgroups:
             P_t = route_data['gross_fare'].median()
             P_0 = BASE_PRICES_2024[route]
             Q_0 = DGCA_TRAFFIC[route]["Q0"]
             Q_t = DGCA_TRAFFIC[route]["Qt"]
-            
+
             sum_pt_q0 += (P_t * Q_0)
             sum_p0_q0 += (P_0 * Q_0)
             sum_pt_qt += (P_t * Q_t)
             sum_p0_qt += (P_0 * Q_t)
-            
+
         if sum_p0_q0 == 0 or sum_p0_qt == 0: continue
-        
+
         fisher = np.sqrt((sum_pt_q0 / sum_p0_q0) * (sum_pt_qt / sum_p0_qt))
-        
+
         all_india_baseline = fetch_mospi_state_baseline("All India")
         augmented_apix = all_india_baseline * fisher
-        
+
         _row_date = _dt.now().strftime("%d_%m_%Y")
         _row_id   = hashlib.sha256(f"{_row_date}|All India|{t_window}".encode()).hexdigest()[:8].upper()
         results.append({
@@ -233,15 +306,15 @@ def calculate_fisher_index(df):
             "Basket_Inflation": f"{round((fisher - 1) * 100, 2)}%",
             "RealTime_APIx": round(augmented_apix, 2)
         })
-        
+
     # Convert to DataFrame
     final_df = pd.DataFrame(results)
-    
+
     # Sort the Time Horizons logically (not alphabetically)
     horizon_order = ["T", "T+1", "T+7", "T+15", "T+30", "T+45", "T+60", "T+90"]
     final_df['Time_Horizon'] = pd.Categorical(final_df['Time_Horizon'], categories=horizon_order, ordered=True)
     final_df = final_df.sort_values(['State', 'Time_Horizon'])
-    
+
     return final_df
 
 if __name__ == "__main__":
