@@ -9,6 +9,7 @@ import { useFeeBreakdown } from '@/hooks/use-fee-breakdown';
 import { LeadTimeChart } from '@/components/charts/lead-time-chart';
 import { CarrierComparison } from '@/components/charts/carrier-comparison';
 import { FareComponentBreakdown } from '@/components/charts/fare-component-breakdown';
+import { OilCorrelationChart } from '@/components/charts/oil-correlation-chart';
 import { FilterBar } from '@/components/filters/filter-bar';
 
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,9 @@ export default function AnalyticsPage() {
       />
 
       <div className='grid grid-cols-1 xl:grid-cols-2 gap-6'>
+        <div className='xl:col-span-2'>
+          <OilCorrelationChart />
+        </div>
         <div className='xl:col-span-2'>
           <CarrierComparison
             data={carriersData}
