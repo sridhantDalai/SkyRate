@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, Droplet } from 'lucide-react';
 import { useMacro } from '@/hooks/use-macro';
 
@@ -71,12 +70,12 @@ export function OilCorrelationChart() {
           </ResponsiveContainer>
         </div>
         
-        <Alert className="mt-6 bg-blue-500/10 border-blue-500/20 text-blue-500">
-          <TrendingUp className="h-4 w-4" />
-          <AlertDescription className="ml-2 font-medium">
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-blue-500">
+          <TrendingUp className="h-5 w-5 shrink-0 mt-0.5" />
+          <div className="font-medium">
             {data.correlation_insight}
-          </AlertDescription>
-        </Alert>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
