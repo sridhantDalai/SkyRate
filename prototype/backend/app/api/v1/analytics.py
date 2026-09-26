@@ -202,3 +202,20 @@ async def get_macro_oil():
         data=data,
         message="Brent crude oil macro indicator data retrieved."
     )
+
+import json
+import os
+
+@router.get("/macro/oil", summary="Get Macro Oil Data")
+async def get_oil_correlation():
+    """Returns historical Brent Crude oil prices to correlate with the Airfare Index."""
+    # Move up from app/api/v1/analytics.py to the ML directory where the JSON is stored
+    db_path = os.path.join(os.path.dirname(__file__), "../../../../ML/macro_indicators_db.json")
+    
+    if not os.path.exists(db_path):
+        return {"data": []}
+        
+    with open(db_path, "r") as f:
+        oil_data = json.load(f)
+        
+    return {"data": oil_data}

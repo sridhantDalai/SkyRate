@@ -11,8 +11,15 @@ from datetime import datetime as _dt
 # In production, this function makes a live GET request to the MoSPI Swagger API
 # Endpoint: GET /api/cpi/getCPIData
 # We load the official MoSPI CPI database once to save time during loops
-print("Loading official MoSPI CPI database (cpi_713.xlsx)...")
-mospi_df = pd.read_excel('cpi_713.xlsx')
+print("Fetching official MoSPI CPI baselines...")
+try:
+    # TODO: Initialize Supabase client here when DB is ready
+    # response = supabase_client.table('dgca_weights_2024').select('*').execute()
+    # mospi_df = pd.DataFrame(response.data)
+    raise Exception("Supabase dynamic weights table not yet mapped.")
+except Exception as e:
+    print(f"⚠️ Dynamic weights skipped. Safe fallback to local cpi_713.xlsx: {e}")
+    mospi_df = pd.read_excel('cpi_713.xlsx')
 
 def fetch_mospi_state_baseline(state_name):
     """
