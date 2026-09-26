@@ -5,10 +5,12 @@ import { useFilters } from '@/hooks/use-filters';
 import { useElasticity } from '@/hooks/use-elasticity';
 import { useCarriers } from '@/hooks/use-carriers';
 import { useFeeBreakdown } from '@/hooks/use-fee-breakdown';
+import { useOilMacro } from '@/hooks/use-oil-macro';
 
 import { LeadTimeChart } from '@/components/charts/lead-time-chart';
 import { CarrierComparison } from '@/components/charts/carrier-comparison';
 import { FareComponentBreakdown } from '@/components/charts/fare-component-breakdown';
+import { BrentCrudeChart } from '@/components/charts/brent-crude-chart';
 import { FilterBar } from '@/components/filters/filter-bar';
 
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,13 @@ export default function AnalyticsPage() {
     refetch: refetchFees,
   } = useFeeBreakdown(route);
 
+  const {
+    data: oilData,
+    isLoading: isOilLoading,
+    error: oilError,
+    refetch: refetchOil,
+  } = useOilMacro();
+
   React.useEffect(() => {
     setElasticityRoute(route);
     updateCarrierFilters({ route, horizon });
@@ -54,6 +63,7 @@ export default function AnalyticsPage() {
     refetchElasticity();
     refetchCarriers();
     refetchFees();
+    refetchOil();
   };
 
   return (
@@ -78,6 +88,14 @@ export default function AnalyticsPage() {
       />
 
       <div className='grid grid-cols-1 xl:grid-cols-2 gap-6'>
+        <div className='xl:col-span-2'>
+          <BrentCrudeChart
+            data={oilData}
+            isLoading={isOilLoading}
+            error={oilError}
+            onRetry={refetchOil}
+          />
+        </div>
         <div className='xl:col-span-2'>
           <CarrierComparison
             data={carriersData}

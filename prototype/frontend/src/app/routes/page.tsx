@@ -118,7 +118,7 @@ export default function RoutesPage() {
             </div>
             <div>
               <p className='font-semibold text-foreground text-xs sm:text-sm'>
-                No flight observations recorded for corridor {route} in today's surveillance batch
+                No flight observations recorded for corridor {route} in today&apos;s surveillance batch
               </p>
               <p className='text-muted-foreground text-[11px] sm:text-xs mt-0.5'>
                 Corridor physical specifications are displayed. To explore live flight observations and airline distributions, select one of the actively monitored routes:

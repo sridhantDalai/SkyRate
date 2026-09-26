@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { HealthIndicator } from './health-indicator';
 import { Button } from '@/components/ui/button';
-import { API_BASE_URL } from '@/lib/api';
+
 import { Plane, Menu, X, ExternalLink, ArrowLeft } from 'lucide-react';
 import { NAVIGATION_ITEMS } from '@/lib/constants';
 
@@ -17,9 +17,7 @@ export function Header() {
   const currentNav = NAVIGATION_ITEMS.find(
     (n) => pathname === n.href || (n.href !== '/dashboard' && pathname?.startsWith(n.href))
   );
-  const docsHref = API_BASE_URL.endsWith('/api/v1')
-    ? `${API_BASE_URL.slice(0, -7)}/docs`
-    : `${API_BASE_URL}/docs`;
+
 
   React.useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
